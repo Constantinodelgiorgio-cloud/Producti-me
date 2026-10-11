@@ -16,7 +16,8 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [04 · Arquitectura y hoja de ruta](docs/04-arquitectura-y-roadmap.md) | Opciones técnicas, privacidad y fases de construcción |
 | [05 · Perfil y decisiones](docs/05-perfil-y-decisiones.md) | Síntesis de mis respuestas, metas medibles y decisiones de diseño |
 | [06 · Preguntas ronda 2](docs/06-preguntas-ronda-2.md) | Segunda ronda de datos (respondida) |
-| [07 · App fase 1](docs/07-app-fase-1.md) | **Qué hace la app, cómo instalarla en el iPhone y cómo activar el coach** |
+| [07 · App fase 1](docs/07-app-fase-1.md) | Qué hace la app, cómo instalarla en el iPhone y cómo activar el coach |
+| [08 · Rediseño: auditoría y direcciones](docs/08-rediseno-auditoria-y-direcciones.md) | **Pendiente de aprobación**: diagnóstico de interfaz y 3 direcciones visuales con maquetas |
 
 ## Próximo paso
 
