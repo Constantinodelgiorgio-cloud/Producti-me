@@ -33,6 +33,8 @@ jobs:
         working-directory: app/dist
         run: |
           touch .nojekyll
+          # Vercel también mira esta rama: se le indica que no la despliegue.
+          mkdir -p app && echo '{"git":{"deploymentEnabled":false}}' | tee vercel.json > app/vercel.json
           git init -q -b gh-pages
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Publicar ${GITHUB_SHA::7}"
