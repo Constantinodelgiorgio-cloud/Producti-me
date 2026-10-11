@@ -59,8 +59,8 @@ Siempre presente como base, aunque no esté en el top 3: **mente/emociones** (2/
 | IA | Saber de IA más que cualquier conocido | Nivel senior | Horas, proyectos construidos, cursos ❓ definición de "senior" |
 | Inglés | Mejorar | Avanzado | Nivel ❓ actual, minutos diarios, app bilingüe |
 | Trabajo/ingresos | — | Ingresos mensuales + proyectos propios a flote | Ingresos por fuente |
-| Ahorro | USD 5.000 | Independencia económica | Ahorro acumulado ❓ punto de partida |
-| Inversiones | Rendimiento del 12 % ❓ en USD o pesos | Patrimonio de USD 25–30k (a 3 años) | Valor del portafolio, rendimiento, gráfico de velas |
+| Ahorro | De USD 1.200 a USD 5.000 (≈ USD 290 por semana) | Independencia económica | Ahorro acumulado |
+| Inversiones | **+12 % en USD en el 2.º semestre 2026 (1/7 → 31/12)** sobre todo el portafolio (CEDEARs) | Patrimonio de USD 25–30k (a 3 años) | Valor del portafolio, rendimiento sin contar aportes, gráfico de velas |
 | Estética | Mejor estilo + hábitos de cuidado | Cuerpo del que no se avergüence | Rutina de cuidado, fotos de progreso, autopercepción |
 | Relaciones | Reconectar con los amigos | Amistades sólidas | Contactos/juntadas por semana, satisfacción social |
 | Experiencias | — | Experiencia de estudio/trabajo en el exterior | Pasos concretos (idioma, ahorro, postulaciones) |
@@ -96,4 +96,22 @@ un profesional. Con Mente 2/10 y Emociones 2/10 esto es una pieza central, no un
 - **Siestas**: aparecen varios días. Bien usadas (20–30 min o 90 min) ayudan; largas empujan el horario nocturno más tarde.
 - **Rugby como canal social**: el sábado ya pasa varias horas con sus compañeros. Puede ser el punto de partida para el objetivo de relaciones.
 - **Bucle**: lo que más le baja el ánimo es sentirse en un bucle. La app debe mostrar **progreso visible y variedad** (retos nuevos, metas que avanzan) para romperlo.
-- **Objetivos financieros**: un 12 % en 3 meses es una meta muy agresiva si es en dólares ❓. Conviene separar la meta de ahorro (controlable) de la de rendimiento (no controlable).
+- **Objetivos financieros**: el 12 % es para el 2.º semestre en USD (≈ 25 % anualizado): exigente pero posible. La app separa la meta de ahorro (controlable) de la de rendimiento (no controlable) y no cuenta los aportes como rendimiento.
+- **Ahorro**: pasar de USD 1.200 a 5.000 en 3 meses con ingresos variables (0–900/mes) requiere ≈ USD 1.270 por mes. Es la meta menos realista del plan: conviene revisarla en la primera revisión mensual.
+
+## 7. Ronda 2 · datos clave incorporados
+
+| Tema | Dato |
+|---|---|
+| Salud | Erisipela en la tibia, con alta. Termina la clindamicina (incluida como hábito diario temporal) |
+| Composición | ~24 % de grasa (nutricionista). Antes de la enfermedad: 103 kg, banca 140 × 8, sentadilla ~200, peso muerto ~200 |
+| Entrenamiento | Lo planifica el preparador físico (por períodos). La app **registra y recomienda**, no arma rutinas |
+| Nutrición | Quiere contar calorías. 3–4 comidas. Objetivo inicial estimado: 3.000 kcal y 200 g de proteína (validar con la nutricionista) |
+| Sueño | Se levanta 6:00 (L/X/V), 7:50 (M/J), 7:00 (S), ~13:00 (D). Lo desvelan el celular y los pensamientos. Mínimo: 6,5 h |
+| Mente | Bucle = días iguales. Enojo cuando las cosas no salen. Causas: amigos, incomodidad, familia. Abierto a terapia y journaling |
+| Amigos | Un solo grupo grande (jardín + otros círculos). Se alejó por conflictos con su novia. Meta: volver a ser parte del grupo |
+| Estudio | Parciales en noviembre, finales en diciembre. 5 materias + finales de Matemática Financiera y Costos. 24 h/semana para IA + inglés + lectura |
+| Finanzas | USD 1.200 ahorrados. Ingresos variables (0–900/mes). Invierte en CEDEARs (Cocos, IOL). Está armando un portafolio automatizado |
+| Estética | Rutina de skincare completa pero inconstante. Punto a mejorar: manos y uñas. Referentes: James Leung, Daniel Simmons, Tim Dessaint |
+| Juego | Acepta todos los castigos propuestos. Prefiere barras de progreso y **podio oro/plata/bronce/malo** antes que arenas |
+| Tecnología | Presupuesto de USD 12–13 por mes. Quiere Apple Health y calendario integrados. Quiere aprender a mantener la app |
