@@ -1,5 +1,5 @@
 import type { Data } from './store'
-import type { AreaId, Habit, Medal, Snapshot } from './types'
+import type { AreaId, Habit, Medal, Momento, Snapshot } from './types'
 import { addDays, diffDays, dow, today, weekDays, weekStart, uid } from './date'
 import { AREAS, PENALTIES } from './seed'
 
@@ -28,7 +28,7 @@ export const compliance = (d: Data, fechas: string[], area?: AreaId) => {
 export const medalOf = (c: number | null): Medal | null =>
   c === null ? null : c >= 0.9 ? 'oro' : c >= 0.75 ? 'plata' : c >= 0.6 ? 'bronce' : 'malo'
 
-export const MEDAL_ICON: Record<Medal, string> = { oro: '🥇', plata: '🥈', bronce: '🥉', malo: '🟥' }
+export const MEDAL_LABEL: Record<Medal, string> = { oro: 'Oro', plata: 'Plata', bronce: 'Bronce', malo: 'Bajo meta' }
 
 /** Días de la semana hasta hoy inclusive. */
 export const weekSoFar = (fecha = today()) => weekDays(weekStart(fecha)).filter((f) => f <= fecha)
@@ -131,7 +131,7 @@ export const processRules = (d: Data): Partial<Data> | null => {
   if (addDays(prevWeek, 6) >= firstDay && !processed.has(kWeek)) {
     processed.add(kWeek)
     const wm = weekMedals(d, prevWeek, addDays(prevWeek, 6))
-    if (wm.globalMedal === 'oro') rewards.push({ id: uid(), fecha: t, motivo: 'Semana de oro 🥇', premio: 'Hamburguesa (permitido)', usado: false })
+    if (wm.globalMedal === 'oro') rewards.push({ id: uid(), fecha: t, motivo: 'Semana de Oro', premio: 'Hamburguesa (permitido)', usado: false })
     if (wm.globalMedal === 'malo') xpAdjust.push({ fecha: t, xp: -150, motivo: 'Semana mala: −150 XP' })
     for (const [area, v] of Object.entries(wm.areas)) {
       if (v?.m !== 'malo') continue
@@ -213,22 +213,23 @@ export const weeklyCandles = (s: Snapshot[]): Candle[] => {
 }
 
 // ---------- Panel "Hoy": avisos, recomendaciones, recuerdos ----------
-export interface Note { icon: string; text: string; tone?: 'warn' | 'good' | 'info' }
+/** icon = nombre de ícono Lucide (ver components/Icon.tsx); go = pantalla a la que lleva la acción */
+export interface Note { icon: string; text: string; tone?: 'warn' | 'good' | 'info'; go?: string; action?: string }
 
 export const avisos = (d: Data): Note[] => {
   const t = today()
   const out: Note[] = []
   for (const p of d.penalties.filter((x) => !x.hecho))
-    out.push({ icon: '⚠️', text: `Castigo pendiente: ${p.tarea} (${p.motivo}). Los permitidos están bloqueados hasta cumplirlo.`, tone: 'warn' })
+    out.push({ icon: 'alert', text: `Castigo pendiente: ${p.tarea} (${p.motivo}). Los permitidos están bloqueados hasta cumplirlo.`, tone: 'warn', go: 'habitos', action: 'Ver' })
   for (const e of d.exams.filter((x) => x.fecha >= t && diffDays(x.fecha, t) <= 21).sort((a, b) => a.fecha.localeCompare(b.fecha))) {
     const m = d.subjects.find((s) => s.id === e.materiaId)
     const n = diffDays(e.fecha, t)
-    out.push({ icon: '📅', text: `${e.tipo} de ${m?.nombre ?? '?'} ${n === 0 ? 'HOY' : `en ${n} día${n === 1 ? '' : 's'}`}`, tone: n <= 3 ? 'warn' : 'info' })
+    out.push({ icon: 'calendar', text: `${e.tipo} de ${m?.nombre ?? '?'} ${n === 0 ? 'HOY' : `en ${n} día${n === 1 ? '' : 's'}`}`, tone: n <= 3 ? 'warn' : 'info', go: 'estudio', action: 'Estudiar' })
   }
-  if (dow(t) === 6 && !d.reviews.find((r) => r.semana === weekStart(t))) out.push({ icon: '🗓️', text: 'Hoy toca la revisión semanal (15–20 min).', tone: 'info' })
-  if (d.exams.length === 0) out.push({ icon: '📌', text: 'Cargá las fechas de parciales (noviembre) y finales (diciembre) en Estudio.', tone: 'info' })
+  if (dow(t) === 6 && !d.reviews.find((r) => r.semana === weekStart(t))) out.push({ icon: 'calendar-check', text: 'Hoy toca la revisión semanal (15–20 min).', tone: 'info', go: 'revision', action: 'Abrir' })
+  if (d.exams.length === 0) out.push({ icon: 'pin', text: 'Faltan las fechas de parciales (noviembre) y finales (diciembre).', tone: 'warn', go: 'estudio', action: 'Cargar' })
   const disponibles = d.rewards.filter((r) => !r.usado).length
-  if (disponibles && !d.penalties.some((p) => !p.hecho)) out.push({ icon: '🍔', text: `Tenés ${disponibles} permitido${disponibles > 1 ? 's' : ''} ganado${disponibles > 1 ? 's' : ''}.`, tone: 'good' })
+  if (disponibles && !d.penalties.some((p) => !p.hecho)) out.push({ icon: 'gift', text: `Tenés ${disponibles} permitido${disponibles > 1 ? 's' : ''} ganado${disponibles > 1 ? 's' : ''}.`, tone: 'good', go: 'habitos', action: 'Ver' })
   return out
 }
 
@@ -241,36 +242,36 @@ export const recomendaciones = (d: Data): Note[] => {
   const intensidad = agendaHoy.find((a) => a.intensidad)?.intensidad
 
   if (hs !== null && hs < d.profile.suenoMin)
-    out.push({ icon: '😴', text: `Dormiste ${hs.toFixed(1)} h. ${intensidad === 'roja' ? 'Hoy es intensidad roja: priorizá una siesta de 20–30 min, hidratación y carbohidratos antes del entrenamiento.' : 'Siesta de 20–30 min (no más) y acostate temprano.'}` })
+    out.push({ icon: 'bed', text: `Dormiste ${hs.toFixed(1)} h. ${intensidad === 'roja' ? 'Hoy es intensidad roja: priorizá una siesta de 20–30 min, hidratación y carbohidratos antes del entrenamiento.' : 'Siesta de 20–30 min (no más) y acostate temprano.'}` })
   const manana = addDays(t, 1)
   const wake = d.profile.despertar[dow(manana)]
-  out.push({ icon: '🛏️', text: `Mañana te levantás a las ${wake}: para dormir ${String(d.profile.suenoMin).replace('.', ',')} h acostate antes de las ${bedtimeFor(wake, d.profile.suenoMin)}. Celular fuera de la cama 30 min antes.` })
+  out.push({ icon: 'moon', text: `Mañana te levantás a las ${wake}: para dormir ${String(d.profile.suenoMin).replace('.', ',')} h acostate antes de las ${bedtimeFor(wake, d.profile.suenoMin)}. Celular fuera de la cama 30 min antes.` })
 
-  if (intensidad === 'roja') out.push({ icon: '🔴', text: 'Día de intensidad roja: comida con carbohidratos 2–3 h antes y proteína después.' })
-  if (intensidad === 'partido') out.push({ icon: '🏉', text: 'Día de partido: desayuno fuerte, hidratación desde temprano. Aprovechá el tercer tiempo para estar con el grupo.' })
+  if (intensidad === 'roja') out.push({ icon: 'flame', text: 'Día de intensidad roja: comida con carbohidratos 2–3 h antes y proteína después.' })
+  if (intensidad === 'partido') out.push({ icon: 'trophy', text: 'Día de partido: desayuno fuerte, hidratación desde temprano. Aprovechá el tercer tiempo para estar con el grupo.' })
 
   const nut = dayNutrition(d, t)
   const hora = new Date().getHours()
   if (hora >= 17 && nut.prot < d.profile.protObjetivo * 0.6)
-    out.push({ icon: '🥩', text: `Vas ${Math.round(nut.prot)} g de proteína de ${d.profile.protObjetivo} g. Te faltan ${Math.round(d.profile.protObjetivo - nut.prot)} g: sumá carne, pollo, huevos o un batido.` })
+    out.push({ icon: 'beef', text: `Vas ${Math.round(nut.prot)} g de proteína de ${d.profile.protObjetivo} g. Te faltan ${Math.round(d.profile.protObjetivo - nut.prot)} g: sumá carne, pollo, huevos o un batido.` })
 
   const lastSocial = [...d.social].sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
   const sinSocial = lastSocial ? diffDays(t, lastSocial.fecha) : 99
-  if (sinSocial >= 3) out.push({ icon: '🤝', text: `Hace ${sinSocial >= 99 ? 'mucho' : `${sinSocial} días`} que no registrás contacto con amigos. Escribí al grupo hoy; proponé algo concreto (fecha + lugar).` })
+  if (sinSocial >= 3) out.push({ icon: 'users', text: `Hace ${sinSocial >= 99 ? 'mucho' : `${sinSocial} días`} que no registrás contacto con amigos. Escribí al grupo hoy; proponé algo concreto (fecha + lugar).` })
 
   const proxExamen = d.exams.filter((e) => e.fecha >= t).sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
   if (proxExamen && diffDays(proxExamen.fecha, t) <= 14) {
     const m = d.subjects.find((s) => s.id === proxExamen.materiaId)
-    out.push({ icon: '📚', text: `Priorizá ${m?.nombre}: hacé hoy 2 bloques de 45 min de ejercicios tipo examen.` })
+    out.push({ icon: 'book-open', text: `Priorizá ${m?.nombre}: hacé hoy 2 bloques de 45 min de ejercicios tipo examen.` })
   }
 
   const semana = weekSoFar()
   const minAprendizaje = d.study.filter((s) => semana.includes(s.fecha) && s.tipo !== 'facultad').reduce((a, s) => a + s.minutos, 0)
   const esperado = (d.profile.horasAprendizaje * 60 * semana.length) / 7
-  if (minAprendizaje < esperado * 0.7) out.push({ icon: '🤖', text: `IA + inglés + lectura: llevás ${Math.round(minAprendizaje / 60)} h de ${Math.round(esperado / 60)} h esperadas a esta altura de la semana.` })
+  if (minAprendizaje < esperado * 0.7) out.push({ icon: 'bot', text: `IA + inglés + lectura: llevás ${Math.round(minAprendizaje / 60)} h de ${Math.round(esperado / 60)} h esperadas a esta altura de la semana.` })
 
   const rutina = d.journal.filter((j) => diffDays(t, j.fecha) <= 7).length
-  if (rutina === 0) out.push({ icon: '✍️', text: 'Una semana sin journaling. Escribí 3 líneas hoy: qué te molestó, qué salió bien, qué cambiarías.' })
+  if (rutina === 0) out.push({ icon: 'notebook-pen', text: 'Una semana sin journaling. Escribí 3 líneas hoy: qué te molestó, qué salió bien, qué cambiarías.' })
   return out
 }
 
@@ -283,14 +284,41 @@ export const recuerdos = (d: Data): Note[] => {
     const j = d.journal.find((x) => x.fecha === f)
     const v = d.checkins[f]?.victoria
     const lbl = n === 7 ? 'Hace una semana' : n === 30 ? 'Hace un mes' : n === 365 ? 'Hace un año' : `Hace ${n} días`
-    if (v) out.push({ icon: '🏆', text: `${lbl}: "${v}"` })
-    else if (j) out.push({ icon: '📖', text: `${lbl} escribiste: "${j.texto.slice(0, 120)}${j.texto.length > 120 ? '…' : ''}"` })
+    if (v) out.push({ icon: 'trophy', text: `${lbl}: "${v}"` })
+    else if (j) out.push({ icon: 'book-open', text: `${lbl} escribiste: "${j.texto.slice(0, 120)}${j.texto.length > 120 ? '…' : ''}"` })
   }
   const pesos = d.body.filter((b) => b.peso).sort((a, b) => a.fecha.localeCompare(b.fecha))
   if (pesos.length > 1) {
     const p0 = pesos[0]
     const p1 = pesos.at(-1)!
-    if (p0.grasa && p1.grasa && p1.grasa < p0.grasa) out.push({ icon: '📉', text: `Desde el ${p0.fecha} bajaste ${(p0.grasa - p1.grasa).toFixed(1)} puntos de grasa.`, tone: 'good' })
+    if (p0.grasa && p1.grasa && p1.grasa < p0.grasa) out.push({ icon: 'trending-down', text: `Desde el ${p0.fecha} bajaste ${(p0.grasa - p1.grasa).toFixed(1)} puntos de grasa.`, tone: 'good' })
   }
   return out
 }
+
+// ---------- Hoy: agenda, momento de los hábitos, próxima acción ----------
+export const MOMENTOS: { id: Momento; label: string; hasta: string }[] = [
+  { id: 'manana', label: 'Mañana', hasta: 'al despertar' },
+  { id: 'dia', label: 'Durante el día', hasta: 'flexible' },
+  { id: 'tarde', label: 'Tarde', hasta: 'antes de la cena' },
+  { id: 'noche', label: 'Noche', hasta: 'cierre del día' },
+]
+/** Momento del día de un hábito: el elegido o uno deducido del nombre. */
+export const momentoDe = (h: Habit): Momento => {
+  if (h.momento) return h.momento
+  const n = h.nombre.toLowerCase()
+  if (/mañana|movilidad|clindamicina/.test(n)) return 'manana'
+  if (/noche|journal|lectura|celular|dormir|manos|registrar ingresos/.test(n)) return 'noche'
+  if (/entren|estudio|inglés|ia |plan|algo fuera|marmoler|portafolio|escribirle/.test(n)) return 'tarde'
+  return 'dia'
+}
+export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
+export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
+/** Próximo bloque de la agenda de hoy (o el que está en curso, hasta 60 min). */
+export const agendaAhora = (d: Data) => {
+  const items = d.profile.agenda[dow(today())] ?? []
+  const n = nowMin()
+  const next = items.find((a) => toMin(a.hora) >= n - 60 && toMin(a.hora) + 60 > n) ?? items.find((a) => toMin(a.hora) > n)
+  return next ? { ...next, faltan: toMin(next.hora) - n } : null
+}
+export const hourFmt = (min: number) => `${String(Math.floor(((min % 1440) + 1440) % 1440 / 60)).padStart(2, '0')}:${String(((min % 60) + 60) % 60).padStart(2, '0')}`

@@ -1,15 +1,15 @@
 import type { Area, Habit, Profile, Subject, Food } from './types'
 
 export const AREAS: Area[] = [
-  { id: 'fisico', nombre: 'Físico', nameEn: 'Body', emoji: '🏉', peso: 3 },
-  { id: 'social', nombre: 'Amigos', nameEn: 'Friends', emoji: '🤝', peso: 3 },
-  { id: 'finanzas', nombre: 'Finanzas', nameEn: 'Money', emoji: '💵', peso: 3 },
-  { id: 'salud', nombre: 'Salud y sueño', nameEn: 'Health & sleep', emoji: '🛌', peso: 2 },
-  { id: 'mente', nombre: 'Mente', nameEn: 'Mind', emoji: '🧠', peso: 2 },
-  { id: 'estudio', nombre: 'Estudio', nameEn: 'Study', emoji: '📚', peso: 2 },
-  { id: 'estetica', nombre: 'Estética', nameEn: 'Looks', emoji: '✨', peso: 2 },
-  { id: 'trabajo', nombre: 'Trabajo', nameEn: 'Work', emoji: '🛠️', peso: 1 },
-  { id: 'disfrute', nombre: 'Disfrute', nameEn: 'Fun', emoji: '🌍', peso: 1 },
+  { id: 'fisico', nombre: 'Físico', nameEn: 'Body', icon: 'dumbbell', peso: 3 },
+  { id: 'social', nombre: 'Amigos', nameEn: 'Friends', icon: 'users', peso: 3 },
+  { id: 'finanzas', nombre: 'Finanzas', nameEn: 'Money', icon: 'wallet', peso: 3 },
+  { id: 'salud', nombre: 'Salud y sueño', nameEn: 'Health & sleep', icon: 'heart-pulse', peso: 2 },
+  { id: 'mente', nombre: 'Mente', nameEn: 'Mind', icon: 'brain', peso: 2 },
+  { id: 'estudio', nombre: 'Estudio', nameEn: 'Study', icon: 'book-open', peso: 2 },
+  { id: 'estetica', nombre: 'Estética', nameEn: 'Looks', icon: 'scan-face', peso: 2 },
+  { id: 'trabajo', nombre: 'Trabajo', nameEn: 'Work', icon: 'hammer', peso: 1 },
+  { id: 'disfrute', nombre: 'Disfrute', nameEn: 'Fun', icon: 'compass', peso: 1 },
 ]
 
 const ALL: number[] = []

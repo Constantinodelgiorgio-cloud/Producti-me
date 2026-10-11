@@ -1,5 +1,7 @@
 # 07 · App · Fase 1
 
+> La interfaz fue rediseñada ("Precision Dark"): ver [10 · Sistema de diseño](10-sistema-de-diseno.md). Las funciones de esta página se conservan; cambian la navegación (Hoy · Hábitos · ＋ · pantalla fijada · Más) y la forma de registrar (botón ＋).
+
 Código en [`app/`](../app). Web app instalable (PWA) hecha con React, TypeScript y Vite.
 
 ## Qué incluye

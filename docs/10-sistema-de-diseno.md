@@ -1,5 +1,7 @@
 # 10 · Sistema de diseño · Producti-Me "Precision Dark"
 
+> **Estado: implementado en `app/`** (Fase 5 completa). Ver la sección 8 para el control de calidad.
+
 > Fase 4. Base: dirección B + A aprobada, prototipo v2 ([`design/prototipo/`](design/prototipo/index.html)).
 > Decisiones confirmadas: **Hoy = Enfoque (A) con Línea (B) como vista secundaria** · **Navegación móvil = Fijada** · **Deslizar a la izquierda = No hecho**.
 > Pendiente de confirmar: horizonte como firma y azul hielo (punto 3 de la ronda anterior).
@@ -176,3 +178,34 @@ Por etapas. Cada una se puede publicar sola y no cambia reglas ni datos.
 | 7 | **QA** | Revisión de emojis (0), contraste, teclado, lector de pantalla, 390 / 768 / 1440 px, rendimiento (Recharts cargado solo donde se usa) y recorrido completo de funciones | — |
 
 Al final de cada etapa: compilación y tipos sin errores, capturas a 390 y 1440 px, y una prueba automatizada que recorre la etapa en el navegador.
+
+---
+
+## 8. Implementación y control de calidad (Fase 5)
+
+**Qué cambió en `app/`**
+- `styles.css` reescrito con los tokens de este documento. Geist y Geist Mono van incluidas en la app (funcionan sin conexión).
+- Íconos: `lucide-react` a través de `components/Icon.tsx`. **0 emojis** en la interfaz (verificado por script sobre `src/`).
+- Navegación: barra **Fijada** (Hoy · Hábitos · ＋ · pantalla fijada · Más), barra lateral en escritorio, paleta ⌘K, atajos R y 1–6, transiciones de pantalla.
+- Hoy: **Enfoque** (Ahora + prioridad + barra de ticks, siguiente acción, señales expandibles, atención, recomendaciones, recuerdos, briefing) y **Línea** como vista secundaria.
+- Hábitos: casilla única, ½ para la versión mínima, deslizar → hecho / ← no hecho, semana con anillos, podio con medallas, castigos y permitidos.
+- Nueva pantalla **Comida** con proyección rayada y "Repetir lo último" en la hoja Registrar.
+- Check-ins como hojas que se abren solo cuando las pedís.
+- Los `confirm()` y `prompt()` nativos se reemplazaron por hojas propias y formularios en línea; todas las acciones de guardar y borrar muestran un aviso con **Deshacer**.
+- Datos: campos opcionales nuevos `habit.momento`, `settings.pinned` y `settings.hoyView`. No hace falta migrar y no se borra nada.
+- Rendimiento: las pantallas con gráficos y el coach se cargan al abrirlos. La carga inicial pasó de 834 KB a 238 KB (de 237 a 79 KB comprimida).
+
+**Verificado**
+- `tsc` sin errores y `vite build` correcto.
+- Recorrido automatizado en Chromium a 390 px (táctil) y a 1440 px:
+  - check-in, marcar, mínimo, deslizar a "no hecho" y Deshacer;
+  - Registrar → Comida → guardar, y "Registrar gasto", que lleva al formulario con foco;
+  - las hojas Más y Confirmación;
+  - todas las pantallas;
+  - paleta ⌘K, atajos y foco visible con Tab.
+- Sin errores de consola y sin desplazamiento horizontal en ninguna pantalla.
+
+**No verificado / pendiente**
+- No se probó en un iPhone físico: gestos reales, desenfoque de fondo y zonas seguras.
+- No se probó con lector de pantalla real (VoiceOver).
+- La interfaz completa en inglés no está implementada; el selector de idioma cambia el coach y el dictado por voz.

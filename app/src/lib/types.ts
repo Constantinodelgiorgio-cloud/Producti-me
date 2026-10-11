@@ -3,7 +3,8 @@ export type AreaId = 'fisico' | 'salud' | 'mente' | 'estudio' | 'trabajo' | 'est
 export type Medal = 'oro' | 'plata' | 'bronce' | 'malo'
 export type Intensity = 'roja' | 'amarilla' | 'baja' | 'partido' | 'libre'
 
-export interface Area { id: AreaId; nombre: string; nameEn: string; emoji: string; peso: number }
+export type Momento = 'manana' | 'dia' | 'tarde' | 'noche'
+export interface Area { id: AreaId; nombre: string; nameEn: string; icon: string; peso: number }
 
 export interface Habit {
   id: string
@@ -14,6 +15,8 @@ export interface Habit {
   dias: number[]
   xp: number
   activo: boolean
+  /** momento del día para la vista Línea; si falta se deduce del nombre */
+  momento?: Momento
 }
 export type HabitState = 'hecho' | 'minimo' | 'no'
 
@@ -96,4 +99,5 @@ export interface Profile {
   agenda: { hora: string; que: string; intensidad?: Intensity }[][]
 }
 
-export interface Settings { lang: Lang; apiKey: string; coachModel: string }
+export type Pinned = 'fisico' | 'estudio' | 'finanzas' | 'vida'
+export interface Settings { lang: Lang; apiKey: string; coachModel: string; pinned?: Pinned; hoyView?: 'enfoque' | 'linea' }
