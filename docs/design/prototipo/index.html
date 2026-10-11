@@ -76,6 +76,7 @@ button{background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-c
 .side-btn:hover{background:var(--surface-2);color:var(--t1)}
 .side-btn[aria-current="page"]{background:var(--surface-3);color:var(--t1);box-shadow:inset 0 0 0 1px var(--line-2)}
 .side-btn[aria-current="page"] .ic{color:var(--accent)}
+.side-btn .ml{margin-left:auto}
 .side-btn kbd,.kbd{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--t3);padding:1px 6px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--line-2)}
 .side-sep{height:1px;background:var(--line);margin:10px 8px}
 .side-cta{display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:10px;border-radius:var(--r-2);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-2);color:var(--t1);font-weight:550;font-size:14px}
@@ -235,7 +236,9 @@ button{background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-c
 
 /* ---------- pantallas: comunes ---------- */
 .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px}
-.top-actions{display:flex;gap:4px;align-items:center}
+.top-actions{display:flex;gap:4px;align-items:center;flex:none}
+.only-desk{display:none}
+@container app (min-width:980px){.only-desk{display:grid}}
 .sec{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 2px 10px}
 .stack{display:flex;flex-direction:column;gap:12px}
 .view{animation:viewIn var(--d-2) var(--ease)}
@@ -394,8 +397,6 @@ button{background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-c
   <span class="tag-proto">Prototipo</span>
   <span class="lbl">Pantalla</span>
   <div class="seg" id="r-screen"></div>
-  <span class="lbl">Hoy</span>
-  <div class="seg" id="r-hoy"></div>
   <span class="lbl">Navegación</span>
   <div class="seg" id="r-nav"></div>
   <span class="lbl">Datos</span>
@@ -470,7 +471,7 @@ const NOW_MIN = 17 * 60 + 35 // domingo 11 de octubre, 17:35 (hora fija para eva
 // ---------- estado ----------
 const store = { get(k, d) { try { const v = localStorage.getItem('pm-proto-' + k); return v == null ? d : JSON.parse(v) } catch { return d } }, set(k, v) { try { localStorage.setItem('pm-proto-' + k, JSON.stringify(v)) } catch {} } }
 const S = {
-  screen: store.get('screen', 'hoy'), hoyV: store.get('hoyV', 'A'), nav: store.get('nav', 'hub'), data: store.get('data', 'normal'), view: store.get('view', 'auto'),
+  screen: store.get('screen', 'hoy'), hoyV: store.get('hoyV', 'A'), nav: store.get('nav2', 'fijada'), data: store.get('data', 'normal'), view: store.get('view', 'auto'),
   status: {}, prioDone: false, kcal: 590, prot: 67, checkinM: null, sel: [], expanded: null, filter: 'todos', day: 6, deepFrom: null, area: null, showDone: false,
 }
 function seed() {
@@ -498,7 +499,7 @@ function habitRow(h, opts = {}) {
   const st = S.status[h.id]
   const meta = [h.detail, h.min && `mínimo ${h.min}`].filter(Boolean).join(' · ') || AREAS[h.area].n
   return `<div class="hrow ${stateCls(h.id)}" data-hid="${h.id}">
-    <div class="hrow-bg" aria-hidden="true"><span class="l">${ic('check')} Hecho</span><span class="r">Mínimo ${ic('minus')}</span></div>
+    <div class="hrow-bg" aria-hidden="true"><span class="l">${ic('check')} Hecho</span><span class="r">No hecho ${ic('x')}</span></div>
     <div class="hrow-fg">
       <span class="h-ic">${ic(h.icon)}</span>
       <span class="h-txt"><span class="h-name">${h.name}</span><span class="h-meta">${meta}</span></span>
@@ -518,10 +519,10 @@ const ring = (p, size = 76, sw = 6, label = '') => {
 }
 
 // ---------- pantalla: Hoy A (Instrumento) ----------
-function topbar(title, sub) {
+function topbar(title, sub, views) {
   return `<header class="top"><div><div class="eyebrow">${sub}</div><h1 class="h1">${title}</h1></div>
-    <div class="top-actions">
-      <button class="icon-btn" data-act="palette" aria-label="Buscar o ejecutar un comando">${ic('search')}</button>
+    <div class="top-actions">${views ? `<div class="seg" role="group" aria-label="Vista de Hoy" style="margin-right:4px"><button aria-pressed="${S.hoyV === 'A'}" data-act="hoyv" data-v="A">Enfoque</button><button aria-pressed="${S.hoyV === 'B'}" data-act="hoyv" data-v="B">Línea</button></div>` : ''}
+      <button class="icon-btn only-desk" data-act="palette" aria-label="Buscar o ejecutar un comando">${ic('search')}</button>
       <button class="icon-btn" data-go="revision" aria-label="Revisión semanal">${ic('calendar-check')}</button>
     </div></header>`
 }
@@ -581,7 +582,7 @@ function hoyA() {
   const empty = S.data === 'vacio'
   const ticks = HABITS.map((h) => `<i class="${S.status[h.id] === 'hecho' ? 'd' : S.status[h.id] === 'minimo' ? 'm' : ''}"></i>`).join('')
   return `<div class="view">
-  ${topbar(empty ? 'Bienvenido, Constantino' : 'Buenas tardes, Constantino', 'Dom 11 oct · 17:35')}
+  ${topbar(empty ? 'Bienvenido, Constantino' : 'Buenas tardes, Constantino', 'Dom 11 oct · 17:35', true)}
   <div class="hoy-grid"><div class="stack">
     <section class="horizon now ${t.p >= 1 ? 'complete' : ''}" style="--p:${t.p}" aria-label="Ahora">
       <div class="now-head"><span class="eyebrow">Ahora</span>
@@ -616,7 +617,7 @@ function hoyB() {
     return `<div class="window"><div class="wh"><span class="eyebrow">${label} · ${range}</span><span class="cap num">${done}/${hs.length}</span></div><div class="hlist">${hs.map((h) => habitRow(h)).join('')}</div></div>`
   }
   return `<div class="view">
-  ${topbar('Tu domingo', 'Dom 11 oct · 17:35')}
+  ${topbar('Tu domingo', 'Dom 11 oct · 17:35', true)}
   <section class="horizon tl-head ${t.p >= 1 ? 'complete' : ''}" style="--p:${t.p}">
     ${ring(t.p, 64, 5, `${t.done} de ${t.n} hábitos`)}
     <div style="flex:1;min-width:0"><div><span class="val-l num">${t.done}</span><span class="unit">de ${t.n} hábitos</span></div>
@@ -652,9 +653,9 @@ function habitos() {
   <div class="hab-grid" style="margin-top:16px">
     <div>
       <div class="filters" role="group" aria-label="Filtrar por área">${filters.map(([k, n]) => `<button class="chip" aria-pressed="${S.filter === k}" data-act="filter" data-k="${k}">${n}</button>`).join('')}</div>
-      <p class="cap" style="margin:12px 2px">Deslizá a la derecha para marcar hecho, a la izquierda para la versión mínima. También podés tocar el círculo.</p>
-      ${pend.length ? `<div class="hlist">${pend.map((h) => habitRow(h)).join('')}</div>` : `<div class="panel empty"><span class="glyph">${ic('check')}</span><h3>Nada pendiente${S.filter !== 'todos' ? ' en ' + AREAS[S.filter].n : ''}</h3><p>Todo lo de hoy está marcado. Lo hecho queda abajo por si necesitás corregir algo.</p></div>`}
-      ${done.length ? `<button class="collapsed-group" data-act="show-done" aria-expanded="${S.showDone}" style="margin-top:8px">${ic(S.showDone ? 'chevron-left' : 'chevron-right')} Hechos hoy · ${done.length}</button>${S.showDone ? `<div class="hlist">${done.map((h) => habitRow(h)).join('')}</div>` : ''}` : ''}
+      <p class="cap" style="margin:12px 2px">Deslizá a la derecha para marcar hecho y a la izquierda para no hecho. La versión mínima está en el botón ½.</p>
+      ${pend.length ? `<div class="hlist">${pend.map((h) => habitRow(h)).join('')}</div>` : `<div class="panel empty"><span class="glyph">${ic('check')}</span><h3>Nada pendiente${S.filter !== 'todos' ? ' en ' + AREAS[S.filter].n : ''}</h3><p>Todo lo de hoy está marcado. Lo marcado queda abajo por si necesitás corregir algo.</p></div>`}
+      ${done.length ? `<button class="collapsed-group" data-act="show-done" aria-expanded="${S.showDone}" style="margin-top:8px">${ic(S.showDone ? 'chevron-left' : 'chevron-right')} Marcados hoy · ${done.length}</button>${S.showDone ? `<div class="hlist">${done.map((h) => habitRow(h)).join('')}</div>` : ''}` : ''}
     </div>
     <aside class="stack">
       <div class="sec" style="margin-top:0"><span class="eyebrow">Podio de la semana</span>${empty ? '' : medal(.78)}</div>
@@ -844,7 +845,6 @@ function seg(id, opts, key, onSet) {
 }
 function renderReview() {
   seg('r-screen', [['hoy', 'Hoy'], ['habitos', 'Hábitos'], ['registro', 'Registro'], ['areas', 'Áreas'], ['estados', 'Estados']], 'screen')
-  seg('r-hoy', [['A', 'A · Instrumento'], ['B', 'B · Línea del día']], 'hoyV')
   seg('r-nav', [['actual', 'Actual'], ['hub', 'Áreas'], ['fijada', 'Fijada']], 'nav')
   seg('r-data', [['normal', 'Normal'], ['vacio', 'Vacío'], ['completo', 'Completado']], 'data')
   seg('r-view', [['auto', 'Pantalla completa'], ['movil', 'Marco de iPhone']], 'view')
@@ -854,7 +854,7 @@ document.querySelector('.review').addEventListener('click', (e) => {
   const b = e.target.closest('[data-seg]'); if (!b) return
   const k = b.dataset.seg, v = b.dataset.v
   if (k === 'screen') return go(v)
-  S[k] = v; store.set(k, v)
+  S[k] = v; store.set(k === 'nav' ? 'nav2' : k, v)
   if (k === 'data') seed()
   render()
 })
@@ -873,6 +873,7 @@ function setHabit(id, st, el) {
   const h = HABITS.find((x) => x.id === id)
   const gained = S.status[id] === 'hecho' ? h.xp : S.status[id] === 'minimo' ? h.xp / 2 : 0
   render(true)
+  if (S.status[id] === 'no') toast(`${h.name} · no hecho`, () => { S.status[id] = prev; render(true) })
   if (gained) {
     const row = document.querySelector(`[data-hid="${id}"] .hrow-fg`) || document.querySelector('#next .next-card')
     if (row) { const p = document.createElement('span'); p.className = 'xp-pop'; p.textContent = `+${gained} XP`; row.style.position = 'relative'; row.appendChild(p) }
@@ -886,6 +887,7 @@ document.getElementById('shell').addEventListener('click', (e) => {
   if (act === 'toggle') setHabit(a.dataset.id, 'hecho')
   else if (act === 'min') setHabit(a.dataset.id, 'minimo')
   else if (act === 'prio') { S.prioDone = !S.prioDone; render(true); if (S.prioDone) toast('Prioridad del día cumplida', () => { S.prioDone = false; render(true) }) }
+  else if (act === 'hoyv') { S.hoyV = a.dataset.v; store.set('hoyV', S.hoyV); const run = () => render(); document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches ? document.startViewTransition(run) : run() }
   else if (act === 'expand') { S.expanded = S.expanded === a.dataset.k ? null : a.dataset.k; render(true) }
   else if (act === 'registrar') openSheet(sheetRegistrar)
   else if (act === 'checkin') { S.draft = null; openSheet(sheetCheckin) }
@@ -927,12 +929,12 @@ function bindSwipes() {
       if (!locked) return
       const lim = Math.max(-110, Math.min(110, dx))
       fg.style.transform = `translateX(${lim}px)`
-      bg.style.background = lim > 0 ? `rgba(142,168,255,${Math.min(1, lim / 90)})` : `rgba(42,46,54,${Math.min(1, -lim / 90)})`
+      bg.style.background = lim > 0 ? `rgba(142,168,255,${Math.min(1, lim / 90)})` : `rgba(58,63,73,${Math.min(1, -lim / 90)})`
     }
     const end = () => {
       if (x0 == null) return
       fg.classList.remove('dragging'); fg.style.transform = ''; bg.style.background = ''
-      if (dx > 80) setHabit(id, 'hecho'); else if (dx < -80) setHabit(id, 'minimo')
+      if (dx > 80) setHabit(id, 'hecho'); else if (dx < -80) setHabit(id, 'no')
       x0 = null
     }
     fg.onpointerup = end; fg.onpointercancel = end

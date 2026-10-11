@@ -1,6 +1,6 @@
 # 09 · Rediseño · Prototipo navegable (para evaluar)
 
-> Estado: **en evaluación**. No se tocó código de producción (`app/src`).
+> Estado: **decisiones tomadas** (Hoy = Enfoque con Línea secundaria · navegación Fijada · izquierda = No hecho). Siguiente: [10 · Sistema de diseño](10-sistema-de-diseno.md). No se tocó código de producción (`app/src`).
 > Prototipo: [`design/prototipo/index.html`](design/prototipo/index.html) (abrir en el navegador, con internet para las tipografías).
 > También está publicado como página privada para probarlo en el iPhone.
 
