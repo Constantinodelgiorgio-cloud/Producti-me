@@ -17,7 +17,8 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [05 · Perfil y decisiones](docs/05-perfil-y-decisiones.md) | Síntesis de mis respuestas, metas medibles y decisiones de diseño |
 | [06 · Preguntas ronda 2](docs/06-preguntas-ronda-2.md) | Segunda ronda de datos (respondida) |
 | [07 · App fase 1](docs/07-app-fase-1.md) | Qué hace la app, cómo instalarla en el iPhone y cómo activar el coach |
-| [08 · Rediseño: auditoría y direcciones](docs/08-rediseno-auditoria-y-direcciones.md) | **Pendiente de aprobación**: diagnóstico de interfaz y 3 direcciones visuales con maquetas |
+| [08 · Rediseño: auditoría y direcciones](docs/08-rediseno-auditoria-y-direcciones.md) | Diagnóstico de interfaz y 3 direcciones visuales (B + A aprobada conceptualmente) |
+| [09 · Rediseño: prototipo](docs/09-rediseno-prototipo.md) | **En evaluación**: prototipo navegable, dos composiciones de Hoy y análisis de navegación |
 
 ## Próximo paso
 
