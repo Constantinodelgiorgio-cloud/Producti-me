@@ -20,6 +20,7 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [08 · Rediseño: auditoría y direcciones](docs/08-rediseno-auditoria-y-direcciones.md) | Diagnóstico de interfaz y 3 direcciones visuales (B + A aprobada conceptualmente) |
 | [09 · Rediseño: prototipo](docs/09-rediseno-prototipo.md) | Prototipo navegable, dos composiciones de Hoy y análisis de navegación |
 | [10 · Sistema de diseño](docs/10-sistema-de-diseno.md) | Tokens, componentes y reglas · **implementado en la app** |
+| [11 · Evolución premium](docs/11-evolucion-premium-propuesta.md) | Relectura y propuesta: Coach IA operativo, base de alimentos, finanzas separadas, estudio verificable, nueva Hoy · **pendiente de aprobación** |
 
 ## Próximo paso
 
