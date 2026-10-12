@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="amb" cx="0.6" cy="0.6" r="0.55"><stop offset="0" stop-color="#2B3A6E" stop-opacity=".55"/><stop offset=".55" stop-color="#141a30" stop-opacity=".25"/><stop offset="1" stop-color="#08090B" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101217"/><stop offset="1" stop-color="#060708"/></linearGradient>
+    <linearGradient id="lit" x1="0" x2="1"><stop offset="0" stop-color="#4F67C2" stop-opacity=".35"/><stop offset=".55" stop-color="#8EA8FF"/><stop offset="1" stop-color="#D9E2FF"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#C3D0FF" stop-opacity=".85"/><stop offset=".35" stop-color="#8EA8FF" stop-opacity=".35"/><stop offset="1" stop-color="#8EA8FF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8EA8FF" stop-opacity="0"/><stop offset="1" stop-color="#8EA8FF" stop-opacity=".10"/></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#amb)"/>
+  <rect x="0" y="400" width="1024" height="210" fill="url(#haze)"/>
+  <rect x="212" y="598" width="600" height="24" rx="12" fill="#262A33"/>
+  <rect x="212" y="598" width="386" height="24" rx="12" fill="url(#lit)"/>
+  <circle cx="598" cy="610" r="170" fill="url(#glow)"/>
+  <circle cx="598" cy="610" r="38" fill="#F4F6FF"/>
+</svg>

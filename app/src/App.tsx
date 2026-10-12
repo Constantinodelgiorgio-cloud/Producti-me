@@ -1,10 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useStore } from './lib/store'
-import { levelInfo, processRules, totalXp } from './lib/logic'
-import { parseHash, useUI, type Route } from './lib/ui'
+import { castigosPendientes, levelInfo, processRules, sancionActiva, totalXp } from './lib/logic'
+import { parseHash, ROUTE_INFO, SECTION, useUI, type Route } from './lib/ui'
 import { Icon } from './components/Icon'
 import { Bar } from './components/ui'
 import { CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './components/Sheets'
+import { CastigoSheet } from './components/Castigos'
+import { HabitSheet } from './components/HabitTile'
+import { syncCorreo } from './lib/correo'
 import Hoy from './pages/Hoy'
 import Habitos from './pages/Habitos'
 
@@ -16,17 +19,26 @@ const Finanzas = lazy(() => import('./pages/Finanzas'))
 const Vida = lazy(() => import('./pages/Vida'))
 const Revision = lazy(() => import('./pages/Revision'))
 const Ajustes = lazy(() => import('./pages/Ajustes'))
-const PAGES: Record<Route, React.ComponentType> = { hoy: Hoy, habitos: Habitos, comida: Comida, fisico: Fisico, estudio: Estudio, finanzas: Finanzas, vida: Vida, revision: Revision, ajustes: Ajustes }
+const Coach = lazy(() => import('./pages/Coach'))
+const Areas = lazy(() => import('./pages/Areas'))
+const PAGES: Record<Route, React.ComponentType> = { hoy: Hoy, habitos: Habitos, comida: Comida, fisico: Fisico, estudio: Estudio, finanzas: Finanzas, vida: Vida, revision: Revision, ajustes: Ajustes, coach: Coach, areas: Areas }
 
-const AREA_TABS: Record<string, [string, string]> = { fisico: ['Físico', 'dumbbell'], estudio: ['Estudio', 'book-open'], finanzas: ['Finanzas', 'wallet'], vida: ['Vida', 'users'] }
-const SIDE: [Route, string, string, string][] = [['hoy', 'Hoy', 'house', '1'], ['habitos', 'Hábitos', 'list-checks', '2'], ['fisico', 'Físico', 'dumbbell', '3'], ['estudio', 'Estudio', 'book-open', '4'], ['finanzas', 'Finanzas', 'wallet', '5'], ['vida', 'Vida', 'users', '6']]
+const SIDE: [Route, string][] = [['hoy', '1'], ['habitos', '2'], ['coach', '3'], ['fisico', '4'], ['estudio', '5'], ['finanzas', '6'], ['vida', '7']]
+const TABS: (Route | '+')[] = ['hoy', 'habitos', '+', 'coach', 'areas']
+const AREA_ROUTES: Route[] = ['areas', 'fisico', 'comida', 'estudio', 'finanzas', 'vida', 'revision', 'ajustes']
 
-const Logo = () => (
-  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x=".5" y=".5" width="21" height="21" rx="6" fill="#0E1013" stroke="#2A2E36" /><path d="M5 13.5h12" stroke="#2A2E36" strokeWidth="1.5" strokeLinecap="round" /><path d="M5 13.5h7.5" stroke="#8EA8FF" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12.5" cy="13.5" r="1.8" fill="#E6ECFF" /></svg>
+export const Logo = ({ size = 22 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <defs><linearGradient id="lg-h" x1="0" x2="1"><stop offset="0" stopColor="#5E78D6" /><stop offset="1" stopColor="#C3D0FF" /></linearGradient></defs>
+    <rect x="1" y="1" width="62" height="62" rx="16" fill="#0A0B0E" stroke="#262A31" />
+    <path d="M12 38h40" stroke="#2A2E36" strokeWidth="4.5" strokeLinecap="round" />
+    <path d="M12 38h27" stroke="url(#lg-h)" strokeWidth="4.5" strokeLinecap="round" />
+    <circle cx="39.5" cy="38" r="5.5" fill="#EEF2FF" />
+  </svg>
 )
 
 function Splash() {
-  return <div style={{ height: '100%', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><Logo /></div>
+  return <div style={{ height: '100%', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><Logo size={44} /></div>
 }
 
 export default function App() {
@@ -36,22 +48,31 @@ export default function App() {
     if (!ready) return
     const run = () => { const patch = processRules(useStore.getState()); if (patch) useStore.getState().set(() => patch) }
     run()
-    const id = window.setInterval(run, 10 * 60 * 1000)
-    return () => window.clearInterval(id)
+    // Correo de pagos: al abrir la app y cada 10 minutos mientras está abierta.
+    const mail = () => { if (useStore.getState().settings.correoUrl) syncCorreo().catch(() => { /* el error queda en correo.error */ }) }
+    mail()
+    const id = window.setInterval(() => { run(); mail() }, 10 * 60 * 1000)
+    const vis = () => { if (document.visibilityState === 'visible') { run(); mail() } }
+    document.addEventListener('visibilitychange', vis)
+    return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
   }, [ready])
   return ready ? <Shell /> : <Splash />
 }
 
 function Shell() {
   const ui = useUI()
-  const pinned = useStore((s) => s.settings.pinned ?? 'fisico')
   const xp = useStore((s) => totalXp(s))
+  const pend = useStore((s) => castigosPendientes(s).length)
+  const san = useStore((s) => sancionActiva(s))
   const L = levelInfo(xp)
   const scroll = useRef<HTMLDivElement>(null)
-  const route = ui.route === 'comida' ? 'hoy' : ui.route
-  const P = PAGES[ui.route]
+  const [compact, setCompact] = useState(false)
+  const route = ui.route
+  const P = PAGES[route]
+  const tabOf = (r: Route): Route => (AREA_ROUTES.includes(r) ? 'areas' : r)
+  const activeTab = tabOf(route)
 
-  useEffect(() => { scroll.current?.scrollTo({ top: 0 }) }, [ui.route, ui.sub])
+  useEffect(() => { scroll.current?.scrollTo({ top: 0 }); setCompact(false) }, [ui.route, ui.sub])
   useEffect(() => {
     const on = () => { const h = parseHash(); useUI.setState({ route: h.route, sub: h.sub }) }
     window.addEventListener('hashchange', on)
@@ -62,51 +83,69 @@ function Shell() {
     const t = setTimeout(() => useUI.getState().clearToast(), 4200)
     return () => clearTimeout(t)
   }, [ui.toast])
-  // Atajos de escritorio: ⌘K comandos, R registrar, 1–6 pantallas.
+  // Número en el ícono de la app instalada: castigos pendientes.
+  useEffect(() => {
+    const n = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> }
+    try { if (pend) n.setAppBadge?.(pend)?.catch(() => {}); else n.clearAppBadge?.()?.catch(() => {}) } catch { /* sin soporte */ }
+  }, [pend])
+  // Atajos de escritorio: ⌘K comandos, R registrar, 1–7 pantallas.
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       const s = useUI.getState()
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); s.setPalette(!s.palette); return }
       if (e.key === 'Escape') { if (s.palette) s.setPalette(false); else if (s.sheet) s.closeSheet(); return }
-      if (s.sheet || s.palette || (e.target as HTMLElement).matches('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return
+      if (s.sheet || s.palette || (e.target as HTMLElement).matches('input, textarea, select, [contenteditable]') || e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key.toLowerCase() === 'r') { e.preventDefault(); s.openSheet('registrar') }
       const n = Number(e.key)
-      if (n >= 1 && n <= 6) s.go(SIDE[n - 1][0])
+      if (n >= 1 && n <= SIDE.length) s.go(SIDE[n - 1][0])
     }
     window.addEventListener('keydown', on)
     return () => window.removeEventListener('keydown', on)
   }, [])
 
-  const tabs: ([Route, string, string] | '+')[] = [['hoy', 'Hoy', 'house'], ['habitos', 'Hábitos', 'list-checks'], '+', [pinned, ...AREA_TABS[pinned]] as [Route, string, string], ['mas' as Route, 'Más', 'ellipsis']]
-  const masActive = !['hoy', 'habitos', pinned].includes(route)
+  const tabIdx = TABS.indexOf(activeTab)
+  const [name, icon] = ROUTE_INFO[route]
 
   return (
-    <div className="shell">
+    <div className="shell" data-section={SECTION[route]}>
+      <div className="aura" aria-hidden="true" />
       <nav className="side" aria-label="Navegación principal">
         <div className="brand"><Logo /><b>PRODUCTI-ME</b></div>
         <button className="side-cta" onClick={() => ui.openSheet('registrar')}><Icon name="plus" />Registrar<span className="kbd end">R</span></button>
-        {SIDE.map(([k, n, i, key]) => <button key={k} className="side-btn" aria-current={route === k ? 'page' : undefined} onClick={() => ui.go(k)}><Icon name={i} />{n}<span className="kbd end">{key}</span></button>)}
+        {SIDE.map(([k, key]) => (
+          <button key={k} className="side-btn" data-s={SECTION[k]} aria-current={route === k || (k === 'fisico' && route === 'comida') ? 'page' : undefined} onClick={() => ui.go(k)}>
+            <Icon name={ROUTE_INFO[k][1]} />{ROUTE_INFO[k][0]}{k === 'hoy' && pend > 0 && <span className="badge">{pend}</span>}<span className="kbd end">{key}</span>
+          </button>
+        ))}
         <div className="side-sep" />
+        <button className="side-btn" aria-current={route === 'areas' ? 'page' : undefined} onClick={() => ui.go('areas')}><Icon name="areas" />Áreas</button>
         <button className="side-btn" aria-current={route === 'revision' ? 'page' : undefined} onClick={() => ui.go('revision')}><Icon name="calendar-check" />Revisión semanal</button>
         <button className="side-btn" aria-current={route === 'ajustes' ? 'page' : undefined} onClick={() => ui.go('ajustes')}><Icon name="settings" />Ajustes</button>
         <button className="side-btn" onClick={() => ui.setPalette(true)}><Icon name="command" />Comandos<span className="kbd end">⌘K</span></button>
         <div className="side-foot">
+          {san && <span className="warn-t"><Icon name="lock" size={13} /> Sin XP hasta {new Date(san.hasta).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
           <span>Nivel {L.lvl} · Liga {L.league.name}</span>
           <Bar value={L.progress} />
           <span className="num">{L.toNext.toLocaleString('es-AR')} XP para el nivel {L.lvl + 1}</span>
         </div>
       </nav>
       <div className="main">
-        <div className="scroll" ref={scroll}>
-          <main className="page" key={ui.route + (ui.sub ?? '')}>
+        <div className={`topbar ${compact && route !== 'coach' ? 'show' : ''}`} aria-hidden={!compact}>
+          <span className="tb-ic"><Icon name={icon} size={15} /></span><span>{name}</span>
+        </div>
+        <div className="scroll" ref={scroll} onScroll={(e) => { const c = (e.target as HTMLElement).scrollTop > 64; if (c !== compact) setCompact(c) }}>
+          <main className={`page ${route === 'coach' ? 'page-full' : ''}`} key={ui.route + (ui.sub ?? '')}>
             <Suspense fallback={<div style={{ height: 200 }} />}><P /></Suspense>
           </main>
         </div>
-        <nav className="tabbar" aria-label="Navegación principal">
-          {tabs.map((t) => t === '+'
+        <nav className="tabbar" aria-label="Navegación principal" style={{ ['--ti' as string]: tabIdx < 0 ? 0 : tabIdx }}>
+          {tabIdx >= 0 && <span className="tab-ind" aria-hidden="true" />}
+          {TABS.map((t) => t === '+'
             ? <div className="tab" key="+"><button className="tab-add" aria-label="Registrar" onClick={() => ui.openSheet('registrar')}><Icon name="plus" size={22} stroke={2.2} /></button></div>
-            : <button key={t[0]} className="tab" aria-current={(t[0] === ('mas' as Route) ? masActive : route === t[0]) ? 'page' : undefined}
-                onClick={() => (t[0] === ('mas' as Route) ? ui.openSheet('mas') : ui.go(t[0]))}><Icon name={t[2]} size={21} /><span>{t[1]}</span></button>)}
+            : <button key={t} className="tab" aria-current={activeTab === t ? 'page' : undefined} onClick={() => ui.go(t)}>
+                <span className="tab-ic"><Icon name={ROUTE_INFO[t][1]} size={22} />{t === 'hoy' && pend > 0 && <span className="dot-badge" aria-label={`${pend} castigos pendientes`}>{pend}</span>}</span>
+                <span>{ROUTE_INFO[t][0]}</span>
+              </button>)}
         </nav>
       </div>
       {ui.sheet === 'registrar' && <RegistrarSheet />}
@@ -114,6 +153,8 @@ function Shell() {
       {ui.sheet === 'checkin-manana' && <CheckinSheet kind="manana" />}
       {ui.sheet === 'checkin-noche' && <CheckinSheet kind="noche" />}
       {ui.sheet === 'confirm' && <ConfirmSheet />}
+      {ui.sheet === 'castigo' && <CastigoSheet />}
+      {ui.sheet === 'habito' && <HabitSheet />}
       {ui.palette && <Palette />}
       {ui.toast && (
         <div className="toast" role="status" key={ui.toast.id}>
@@ -132,11 +173,14 @@ function Palette() {
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
   const cmds: [string, string, () => void][] = [
+    ['sparkles', 'Hablar con el coach', () => ui.go('coach')],
     ['utensils', 'Registrar comida', () => ui.go('comida')], ['plus', 'Registrar…', () => ui.openSheet('registrar')],
     ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')],
     ['dumbbell', 'Registrar entrenamiento', () => ui.go('fisico', 'entreno')], ['receipt', 'Registrar gasto o ingreso', () => ui.go('finanzas', 'movimientos')],
-    ['notebook-pen', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],
-    ...SIDE.map(([k, n, ic]) => [ic, `Ir a ${n}`, () => ui.go(k)] as [string, string, () => void]),
+    ['file-text', 'Subir un comprobante', () => ui.go('finanzas', 'comprobante')],
+    ['feather', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],
+    ...SIDE.map(([k]) => [ROUTE_INFO[k][1], `Ir a ${ROUTE_INFO[k][0]}`, () => ui.go(k)] as [string, string, () => void]),
+    ['areas', 'Ir a Áreas', () => ui.go('areas')],
     ['calendar-check', 'Abrir la revisión semanal', () => ui.go('revision')], ['settings', 'Abrir ajustes', () => ui.go('ajustes')],
   ]
   const list = cmds.filter((c) => c[1].toLowerCase().includes(q.toLowerCase()))

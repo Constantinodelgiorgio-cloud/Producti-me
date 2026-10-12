@@ -1,36 +1,46 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { compliance, habitsFor, MOMENTOS, momentoDe, weekMedals } from '../lib/logic'
+import { compliance, excusaDe, habitsFor, MOMENTOS, momentoDe, weekMedals } from '../lib/logic'
 import { fmtShort, today, uid, weekDays, weekStart } from '../lib/date'
 import { AREAS } from '../lib/seed'
 import type { AreaId, Habit, Momento } from '../lib/types'
 import { Icon } from '../components/Icon'
-import { Bar, Card, Empty, Field, Medal, PageHead, Ring } from '../components/ui'
+import { Bar, Empty, Field, Medal, PageHead, Ring, Seg } from '../components/ui'
 import { HabitRow } from '../components/HabitRow'
+import { HabitTile } from '../components/HabitTile'
+import { CastigosPanel } from '../components/Castigos'
+import { useScrollToSub } from '../components/useScrollTo'
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 export default function Habitos() {
+  useScrollToSub()
   const d = useStore()
   const [fecha, setFecha] = useState(today())
   const [filter, setFilter] = useState<AreaId | 'todos'>('todos')
   const [showDone, setShowDone] = useState(false)
   const [edit, setEdit] = useState(false)
+  const view = d.settings.habitView ?? 'grilla'
+  const setView = (v: 'grilla' | 'lista') => d.set((s) => ({ settings: { ...s.settings, habitView: v } }))
   const ws = weekStart(today())
   const days = weekDays(ws)
   const wm = weekMedals(d, ws)
   const list = habitsFor(d.habits, fecha).filter((h) => filter === 'todos' || h.area === filter)
   const log = d.habitLog[fecha] ?? {}
-  const pend = list.filter((h) => !log[h.id])
-  const marked = list.filter((h) => log[h.id])
+  const pend = list.filter((h) => !log[h.id] && !excusaDe(d, fecha, h.id))
+  const marked = list.filter((h) => log[h.id] || excusaDe(d, fecha, h.id))
   const areasHoy = AREAS.filter((a) => habitsFor(d.habits, fecha).some((h) => h.area === a.id))
+  const done = list.filter((h) => log[h.id] === 'hecho' || log[h.id] === 'minimo').length
 
   if (edit) return <Editor onClose={() => setEdit(false)} />
 
   return (
     <div className="view">
-      <PageHead eyebrow={`Semana del ${fmtShort(ws)} al ${fmtShort(days[6])}`} title="Hábitos" right={<button className="btn btn-ghost btn-sm" onClick={() => setEdit(true)}><Icon name="pencil" size={15} />Editar</button>} />
+      <PageHead eyebrow={`Semana ${fmtShort(ws).split(' ')[0]}–${fmtShort(days[6])}`} title="Hábitos" right={<>
+        <Seg label="Vista" value={view} onChange={setView} options={[['grilla', 'Íconos'], ['lista', 'Lista']]} />
+        <button className="icon-btn" aria-label="Editar hábitos" onClick={() => setEdit(true)}><Icon name="pencil" size={17} /></button>
+      </>} />
       <div className="week" role="group" aria-label="Día de la semana">
         {days.map((f, i) => {
           const c = f >= d.inicio ? compliance(d, [f]) : null
@@ -48,23 +58,39 @@ export default function Habitos() {
       <div className="two-col" style={{ marginTop: 16 }}>
         <div>
           <div className="chips" role="group" aria-label="Filtrar por área">
-            <button className="chip" aria-pressed={filter === 'todos'} onClick={() => setFilter('todos')}>Todos</button>
-            {areasHoy.map((a) => <button key={a.id} className="chip" aria-pressed={filter === a.id} onClick={() => setFilter(a.id)}>{a.nombre}</button>)}
+            <button className="chip" aria-pressed={filter === 'todos'} onClick={() => setFilter('todos')}>Todos · {done}/{list.length}</button>
+            {areasHoy.map((a) => <button key={a.id} className="chip" aria-pressed={filter === a.id} onClick={() => setFilter(a.id)}><Icon name={a.icon} size={13} />{a.nombre}</button>)}
           </div>
           <p className="cap" style={{ margin: '12px 2px' }}>
-            {fecha === today() ? 'Hoy' : `Editando el ${fmtShort(fecha)}`} · deslizá a la derecha para marcar hecho y a la izquierda para no hecho. La versión mínima está en ½.
+            {fecha === today() ? 'Hoy' : `Editando el ${fmtShort(fecha)}`} · {view === 'grilla' ? 'tocá para marcar hecho; mantené presionado para versión mínima, no hecho o excusa.' : 'deslizá a la derecha para hecho y a la izquierda para no hecho.'}
           </p>
-          {pend.length ? <div className="hlist">{pend.map((h) => <HabitRow key={h.id} h={h} fecha={fecha} />)}</div>
-            : <div className="panel"><Empty icon="check" title={list.length ? `Nada pendiente${filter !== 'todos' ? ` en ${AREAS.find((a) => a.id === filter)?.nombre}` : ''}` : 'Sin hábitos este día'}>{list.length ? 'Todo está marcado. Lo marcado queda abajo por si necesitás corregir algo.' : 'Ningún hábito activo aplica a este día.'}</Empty></div>}
-          {marked.length > 0 && <>
-            <button className="link-row" style={{ marginTop: 8 }} aria-expanded={showDone} onClick={() => setShowDone(!showDone)}><Icon name={showDone ? 'chevron-left' : 'chevron-right'} size={16} />Marcados · {marked.length}</button>
-            {showDone && <div className="hlist">{marked.map((h) => <HabitRow key={h.id} h={h} fecha={fecha} />)}</div>}
+          {view === 'grilla' ? (
+            list.length === 0 ? <div className="panel"><Empty icon="check" title="Sin hábitos este día">Ningún hábito activo aplica a este día.</Empty></div> :
+            MOMENTOS.map((m) => {
+              const hs = list.filter((h) => momentoDe(h, d, fecha) === m.id)
+              if (!hs.length) return null
+              const n = hs.filter((h) => log[h.id] || excusaDe(d, fecha, h.id)).length
+              return (
+                <section key={m.id} className="mgroup">
+                  <div className="sec" style={{ margin: '18px 2px 10px' }}><span className="eyebrow">{m.label}</span><span className="cap num">{n}/{hs.length}</span></div>
+                  <div className="tile-grid">{hs.map((h) => <HabitTile key={h.id} h={h} fecha={fecha} />)}</div>
+                </section>
+              )
+            })
+          ) : <>
+            {pend.length ? <div className="hlist">{pend.map((h) => <HabitRow key={h.id} h={h} fecha={fecha} />)}</div>
+              : <div className="panel"><Empty icon="check" title={list.length ? `Nada pendiente${filter !== 'todos' ? ` en ${AREAS.find((a) => a.id === filter)?.nombre}` : ''}` : 'Sin hábitos este día'}>{list.length ? 'Todo está marcado. Lo marcado queda abajo por si necesitás corregir algo.' : 'Ningún hábito activo aplica a este día.'}</Empty></div>}
+            {marked.length > 0 && <>
+              <button className="link-row" style={{ marginTop: 8 }} aria-expanded={showDone} onClick={() => setShowDone(!showDone)}><Icon name={showDone ? 'chevron-down' : 'chevron-right'} size={16} />Marcados · {marked.length}</button>
+              {showDone && <div className="hlist">{marked.map((h) => <HabitRow key={h.id} h={h} fecha={fecha} />)}</div>}
+            </>}
           </>}
         </div>
 
         <aside className="stack">
-          <div className="sec" style={{ marginTop: 0 }}><span className="eyebrow">Podio de la semana</span>{wm.globalMedal && <Medal m={wm.globalMedal} />}</div>
-          {wm.global === null ? <div className="panel"><Empty icon="trophy" title="Las medallas empiezan con tu primer registro">Cada área recibe Oro (90 %), Plata (75 %), Bronce (60 %) o Bajo meta. Solo cuentan los días desde que empezaste a usar la app.</Empty></div> : (
+          <CastigosPanel />
+          <div className="sec" style={{ marginTop: 6 }}><span className="eyebrow">Podio de la semana</span>{wm.globalMedal && <Medal m={wm.globalMedal} />}</div>
+          {wm.global === null ? <div className="panel"><Empty icon="trophy" title="Las medallas empiezan con tu primer registro">Cada área recibe Oro (90 %), Plata (75 %), Bronce (60 %) o Bajo meta. Los hábitos excusados no cuentan.</Empty></div> : (
             <div className="panel">
               {AREAS.map((a) => {
                 const v = wm.areas[a.id]
@@ -78,41 +104,9 @@ export default function Habitos() {
               })}
             </div>
           )}
-          <Penalties />
         </aside>
       </div>
     </div>
-  )
-}
-
-function Penalties() {
-  const d = useStore()
-  const ui = useUI()
-  const [nuevo, setNuevo] = useState('')
-  const pend = d.penalties.filter((p) => !p.hecho)
-  const rewards = d.rewards.filter((r) => !r.usado)
-  return (
-    <Card title="Castigos y permitidos" icon="flame">
-      {pend.length === 0 && <p className="body-2">Sin castigos pendientes.</p>}
-      {pend.map((p) => (
-        <div className="attn-row" style={{ padding: '10px 0' }} key={p.id}>
-          <span className="sev warn" aria-hidden="true" />
-          <span className="grow"><span style={{ display: 'block' }}>{p.tarea}</span><span className="cap">{p.motivo} · {fmtShort(p.fecha)}</span></span>
-          <button className="btn btn-quiet btn-sm" onClick={() => { d.set((s) => ({ penalties: s.penalties.map((x) => x.id === p.id ? { ...x, hecho: true } : x) })); ui.notify('Castigo cumplido · +20 XP', () => d.set((s) => ({ penalties: s.penalties.map((x) => x.id === p.id ? { ...x, hecho: false } : x) }))) }}>Cumplido</button>
-        </div>
-      ))}
-      <div className="sec" style={{ margin: '14px 0 6px' }}><span className="eyebrow">Permitidos</span><span className="cap">{pend.length ? 'bloqueados hasta cumplir' : `${rewards.length} disponibles`}</span></div>
-      {rewards.length === 0 ? <p className="cap">Se ganan con semanas de Oro y con cada punto de grasa corporal que bajás.</p> : rewards.map((r) => (
-        <div className="attn-row" style={{ padding: '10px 0' }} key={r.id}>
-          <Icon name="gift" size={16} /><span className="grow"><span style={{ display: 'block' }}>{r.premio}</span><span className="cap">{r.motivo}</span></span>
-          <button className="btn btn-quiet btn-sm" disabled={pend.length > 0} onClick={() => { d.set((s) => ({ rewards: s.rewards.map((x) => x.id === r.id ? { ...x, usado: true } : x) })); ui.notify('Permitido usado. Disfrutalo.', () => d.set((s) => ({ rewards: s.rewards.map((x) => x.id === r.id ? { ...x, usado: false } : x) }))) }}>Usar</button>
-        </div>
-      ))}
-      <form className="row" style={{ marginTop: 12, flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); if (!nuevo.trim()) return; d.set((s) => ({ penalties: [...s.penalties, { id: uid(), fecha: today(), motivo: 'Autoimpuesto', tarea: nuevo.trim(), hecho: false }] })); setNuevo('') }}>
-        <input className="grow" aria-label="Nuevo castigo" placeholder="Ponerme un castigo…" value={nuevo} onChange={(e) => setNuevo(e.target.value)} />
-        <button className="btn btn-quiet" disabled={!nuevo.trim()}>Agregar</button>
-      </form>
-    </Card>
   )
 }
 

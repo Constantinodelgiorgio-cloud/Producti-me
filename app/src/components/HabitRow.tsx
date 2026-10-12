@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { streak } from '../lib/logic'
+import { excusaDe, streak } from '../lib/logic'
 import type { Habit, HabitState } from '../lib/types'
 import { Icon, habitIcon } from './Icon'
 
@@ -42,12 +42,14 @@ export const CheckBox = ({ on, label, onClick }: { on: boolean; label: string; o
 export const HabitRow = ({ h, fecha, compact }: { h: Habit; fecha: string; compact?: boolean }) => {
   const st = useStore((s) => s.habitLog[fecha]?.[h.id])
   const s = useStore((x) => (compact ? 0 : streak(x, h.id)))
+  const ex = useStore((x) => excusaDe(x, fecha, h.id))
+  const openSheet = useUI((x) => x.openSheet)
   const setHabit = useSetHabit()
   const fg = useRef<HTMLDivElement>(null)
   const bg = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x0: number; dx: number; locked: boolean } | null>(null)
-  const cls = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : ''
-  const meta = [h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} días seguidos`].filter(Boolean).join(' · ')
+  const cls = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : ex ? 'is-ex' : ''
+  const meta = ex && !st ? `excusado · ${ex.motivo}` : [h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} días seguidos`].filter(Boolean).join(' · ')
 
   const onDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' || (e.target as HTMLElement).closest('button')) return
@@ -84,6 +86,7 @@ export const HabitRow = ({ h, fecha, compact }: { h: Habit; fecha: string; compa
         <span className="h-ic"><Icon name={habitIcon(h)} size={16} /></span>
         <span className="h-txt"><span className="h-name">{h.nombre}</span>{meta && <span className="h-meta">{meta}</span>}</span>
         {h.minimo && !st && !compact && <button type="button" className="min-btn" aria-label={`Versión mínima: ${h.minimo}`} title={`Mínimo: ${h.minimo}`} onClick={() => setHabit(h, fecha, 'minimo', fg.current)}>½</button>}
+        {!compact && <button type="button" className="min-btn" aria-label={`Más opciones: ${h.nombre}`} onClick={() => openSheet('habito', `${h.id}|${fecha}`)}><Icon name="ellipsis" size={14} /></button>}
         <span className="h-xp num">+{h.xp}</span>
         <CheckBox on={st === 'hecho'} label={`${st === 'hecho' ? 'Desmarcar' : 'Marcar como hecho'}: ${h.nombre}`} onClick={() => setHabit(h, fecha, 'hecho', fg.current)} />
       </div>

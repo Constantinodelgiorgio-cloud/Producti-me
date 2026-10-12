@@ -63,6 +63,15 @@ export default function Revision() {
           </Card>
         </div>
         <aside className="stack">
+          <Card title="Excusas y sanciones de la semana" icon="shield-alert">
+            {(() => {
+              const ex = weekDays(ws).flatMap((f) => Object.entries(d.planDia[f]?.excusas ?? {}).map(([id, e]) => ({ f, h: d.habits.find((x) => x.id === id)?.nombre ?? id, e })))
+              const sn = d.sanciones.filter((x) => x.desde.slice(0, 10) >= ws)
+              if (!ex.length && !sn.length) return <p className="cap">Sin excusas ni sanciones esta semana.</p>
+              return <>{ex.map((x, i) => <div className="list-row" key={i}><span className="grow">{x.h}<span className="cap" style={{ display: 'block' }}>{fmtShort(x.f)} · {x.e.categoria} · {x.e.motivo}{x.e.alternativa ? ` · alternativa: ${x.e.alternativa}` : ''}</span></span></div>)}
+                {sn.map((x) => <div className="list-row" key={x.id}><Icon name="lock" size={14} /><span className="grow">{x.motivo}<span className="cap" style={{ display: 'block' }}>sin XP hasta {new Date(x.hasta).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span></span></div>)}</>
+            })()}
+          </Card>
           <Card title="Medallas por área" icon="trophy">
             {wm.global === null ? <p className="cap">Las medallas aparecen cuando registrás hábitos.</p> : AREAS.filter((a) => wm.areas[a.id]).map((a) => (
               <div className="list-row" key={a.id}><Icon name={a.icon} size={16} /><span className="grow">{a.nombre}</span><span className="pct">{Math.round(wm.areas[a.id]!.c * 100)} %</span><Medal m={wm.areas[a.id]!.m} /></div>

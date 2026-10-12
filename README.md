@@ -4,7 +4,7 @@ App **100 % personal** de rendimiento de vida: una sola persona, un solo usuario
 No es un producto comercial ni una app de "hábitos saludables" genérica: su trabajo es conocer mi vida
 (cuerpo, mente, estudio, trabajo, estética, estilo, objetivos) y empujarme a mejorar con datos propios.
 
-## Estado actual: fase 1 construida
+## Estado actual: evolución premium implementada (v2)
 
 La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App fase 1](docs/07-app-fase-1.md).
 
@@ -20,7 +20,9 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [08 · Rediseño: auditoría y direcciones](docs/08-rediseno-auditoria-y-direcciones.md) | Diagnóstico de interfaz y 3 direcciones visuales (B + A aprobada conceptualmente) |
 | [09 · Rediseño: prototipo](docs/09-rediseno-prototipo.md) | Prototipo navegable, dos composiciones de Hoy y análisis de navegación |
 | [10 · Sistema de diseño](docs/10-sistema-de-diseno.md) | Tokens, componentes y reglas · **implementado en la app** |
-| [11 · Evolución premium](docs/11-evolucion-premium-propuesta.md) | Relectura y propuesta: Coach IA operativo, base de alimentos, finanzas separadas, estudio verificable, nueva Hoy · **pendiente de aprobación** |
+| [11 · Evolución premium](docs/11-evolucion-premium-propuesta.md) | Relectura, propuesta y tus respuestas (B.9) |
+| [12 · Correo de pagos](docs/12-correo-de-pagos.md) | Cómo conectar Gmail para que los pagos se anoten solos |
+| [13 · Evolución implementada](docs/13-evolucion-implementada.md) | Qué cambió, migración de datos, verificación y límites · **implementado** |
 
 ## Próximo paso
 

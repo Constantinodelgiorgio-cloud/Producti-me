@@ -1,10 +1,14 @@
-import { useStore, exportData, initialData, type Data } from '../lib/store'
+import { useState } from 'react'
+import { get as idbGet } from 'idb-keyval'
+import { useStore, exportData, initialData, BACKUP_KEY, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
-import type { Pinned, Profile } from '../lib/types'
+import type { Profile } from '../lib/types'
+import { useScrollToSub } from '../components/useScrollTo'
 import { Icon } from '../components/Icon'
 import { Card, Field, PageHead, Seg } from '../components/ui'
 
 export default function Ajustes() {
+  useScrollToSub()
   const d = useStore()
   const ui = useUI()
   const P = d.profile
@@ -36,11 +40,8 @@ export default function Ajustes() {
     <div className="view">
       <PageHead eyebrow="Producti-Me" title="Ajustes" />
       <div className="grid">
-        <Card title="Idioma y navegación" icon="globe">
-          <div className="stack">
-            <div className="field"><label>Idioma del coach y del dictado por voz</label><Seg label="Idioma" value={d.settings.lang} onChange={(v) => d.set((s) => ({ settings: { ...s.settings, lang: v } }))} options={[['es', 'Español'], ['en', 'English']]} /><span className="cap">La interfaz completa en inglés llega en una próxima etapa.</span></div>
-            <div className="field"><label>Pantalla fijada en la barra inferior</label><Seg label="Pantalla fijada" value={d.settings.pinned ?? 'fisico'} onChange={(v: Pinned) => d.set((s) => ({ settings: { ...s.settings, pinned: v } }))} options={[['fisico', 'Físico'], ['estudio', 'Estudio'], ['finanzas', 'Finanzas'], ['vida', 'Vida']]} /></div>
-          </div>
+        <Card title="Idioma" icon="globe">
+          <div className="field"><label>Idioma del coach y del dictado por voz</label><Seg label="Idioma" value={d.settings.lang} onChange={(v) => d.set((s) => ({ settings: { ...s.settings, lang: v } }))} options={[['es', 'Español'], ['en', 'English']]} /><span className="cap">La interfaz completa en inglés llega en una próxima etapa.</span></div>
         </Card>
         <Card title="Coach con IA" icon="sparkles">
           <div className="stack">
@@ -50,9 +51,11 @@ export default function Ajustes() {
               <option value="claude-sonnet-5-5">Claude Sonnet 5.5 · más barato</option>
               <option value="claude-haiku-5-5">Claude Haiku 5.5 · el más barato</option>
             </select></Field>
-            <p className="cap">Creá la clave en console.anthropic.com y poné un límite de gasto mensual de USD 12. El coach recibe un resumen de tus datos, sin fotos ni textos completos del diario.</p>
+            <p className="cap">Creá la clave en console.anthropic.com y poné un límite de gasto mensual. El coach recibe un resumen de tus datos y el plan de la semana, sin fotos ni textos del diario.</p>
+            <label className="row cap" style={{ gap: 8 }}><input type="checkbox" checked={!!d.settings.coachLeeDiario} onChange={(e) => d.set((s) => ({ settings: { ...s.settings, coachLeeDiario: e.target.checked } }))} />Permitir que el coach lea mis últimas 3 entradas del diario</label>
           </div>
         </Card>
+        <Correo />
         <Card title="Metas" icon="target">
           <div className="form-grid">
             {num('pesoObjetivo', 'Peso objetivo (kg)', 0.5)}{num('grasaObjetivo', '% de grasa objetivo', 0.5)}{num('suenoMin', 'Sueño mínimo (h)', 0.25)}
@@ -69,6 +72,7 @@ export default function Ajustes() {
         </Card>
         <Card title="Tus datos" icon="download">
           <p className="body-2" style={{ marginBottom: 12 }}>Los datos viven en este dispositivo. Exportá una copia cada domingo; para pasar al iPad o a la PC, importala allá.</p>
+          <p className="cap" style={{ marginBottom: 12 }}>Antes de la actualización de la versión 2 se guardó una copia automática de tus datos anteriores. <button className="link-inline" onClick={async () => { const raw = await idbGet<string>(BACKUP_KEY); if (!raw) { ui.notify('No hay copia previa en este dispositivo', undefined, 'neutral'); return } const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = 'producti-me-respaldo-v1.json'; a.click() }}>Descargar respaldo v1</button></p>
           <div className="row">
             <button className="btn btn-primary" onClick={exportar}><Icon name="download" size={16} />Exportar copia</button>
             <label className="btn btn-quiet"><Icon name="upload" size={16} />Importar copia<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = '' }} /></label>
@@ -78,5 +82,30 @@ export default function Ajustes() {
         </Card>
       </div>
     </div>
+  )
+}
+
+function Correo() {
+  const d = useStore()
+  const ui = useUI()
+  const [busy, setBusy] = useState(false)
+  const st = d.settings
+  const set = (p: Partial<typeof st>) => d.set((s) => ({ settings: { ...s.settings, ...p } }))
+  const probar = async () => {
+    setBusy(true)
+    try { const { syncCorreo } = await import('../lib/correo'); const r = await syncCorreo(); ui.notify(`Conectado · ${r.nuevos} anotados · ${r.pendientes} para confirmar`) }
+    catch (e) { ui.notify(`No se pudo conectar: ${e instanceof Error ? e.message : String(e)}`, undefined, 'neutral') } finally { setBusy(false) }
+  }
+  return (
+    <section className="panel pad" id="sec-correo">
+      <h2 className="h2" style={{ marginBottom: 12 }}><Icon name="mail" size={16} />Correo de pagos (Gmail)</h2>
+      <div className="stack">
+        <p className="body-2">Un script de Google que corre en tu propia cuenta lee los correos de Mercado Pago, Santander y Visa, y la app los anota al abrirse. Instalación de 5 minutos: <a href="https://github.com/constantinodelgiorgio-cloud/Producti-me/blob/claude/personal-productivity-wellness-app-mt7jbv/docs/12-correo-de-pagos.md" target="_blank" rel="noreferrer">ver la guía</a>.</p>
+        <Field label="URL del script (termina en /exec)" id="c-url"><input id="c-url" inputMode="url" autoComplete="off" value={st.correoUrl ?? ''} placeholder="https://script.google.com/macros/s/…/exec" onChange={(e) => set({ correoUrl: e.target.value.trim() || undefined })} /></Field>
+        <Field label="Clave del script" id="c-tok"><input id="c-tok" type="password" autoComplete="off" value={st.correoToken ?? ''} onChange={(e) => set({ correoToken: e.target.value.trim() || undefined })} /></Field>
+        <label className="row cap" style={{ gap: 8 }}><input type="checkbox" checked={st.correoAuto !== false} onChange={(e) => set({ correoAuto: e.target.checked })} />Anotar automáticamente lo que se lee con claridad (lo dudoso queda para confirmar)</label>
+        <div className="row"><button className="btn btn-quiet" disabled={!st.correoUrl || busy} onClick={probar}><Icon name="refresh" size={16} />{busy ? 'Revisando…' : 'Probar y revisar ahora'}</button>{d.correo.error && <span className="err">{d.correo.error}</span>}</div>
+      </div>
+    </section>
   )
 }

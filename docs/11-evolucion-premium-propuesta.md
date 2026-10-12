@@ -1,6 +1,6 @@
 # 11 · Evolución premium · Fase A (relectura) y Fase B (propuesta)
 
-> Estado: **propuesta, pendiente de aprobación**. No se tocó código de producción (`app/src`).
+> Estado: **aprobada e implementada** (respuestas en B.9). Ver [13 · Evolución implementada](13-evolucion-implementada.md).
 > Base: auditoría ([08](08-rediseno-auditoria-y-direcciones.md)), prototipo ([09](09-rediseno-prototipo.md)) y sistema "Precision Dark" ([10](10-sistema-de-diseno.md)), ya implementado.
 > Cada hallazgo indica dónde está en el código para que se pueda verificar.
 

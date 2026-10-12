@@ -1,4 +1,4 @@
-import type { Area, Habit, Profile, Subject, Food } from './types'
+import type { Area, CuentaId, Habit, Profile, Ruta, RutaId, Subject, Food } from './types'
 
 export const AREAS: Area[] = [
   { id: 'fisico', nombre: 'Físico', nameEn: 'Body', icon: 'dumbbell', peso: 3 },
@@ -36,6 +36,7 @@ export const HABITS: Habit[] = [
   h('estudio', 'Inglés 20 min', 10, ALL, '5 min de audio'),
   h('estudio', 'IA 60 min (aprender o construir)', 20, ALL, '15 min'),
   h('estudio', 'Lectura 20 min', 10, ALL, '5 páginas'),
+  h('estudio', 'Programación 30 min', 15, LV, '10 min'),
   h('estetica', 'Skincare mañana', 5),
   h('estetica', 'Skincare noche', 5),
   h('estetica', 'Manos y uñas', 10, [6]),
@@ -116,3 +117,39 @@ export const PENALTIES = {
 }
 
 export const EMOCIONES = ['Felicidad', 'Calma', 'Motivación', 'Cansancio', 'Estrés', 'Enojo', 'Tristeza', 'Soledad', 'Ansiedad', 'Orgullo']
+
+const mesActual = new Date().toISOString().slice(0, 7)
+/** Rutas de aprendizaje: objetivo de largo plazo y una meta verificable por mes (con mini test al cierre). */
+export const RUTAS: Ruta[] = [
+  { id: 'ingles', objetivo: 'Inglés profesional y cotidiano de nivel alto: ver películas completas sin subtítulos entendiendo el 100 % y cantar canciones enteras.', metas: [{ mes: mesActual, texto: 'Ver un capítulo de serie (20–40 min) con subtítulos en inglés, pausando menos de 5 veces, y contar la trama en inglés en 5 frases.' }] },
+  { id: 'lectura', objetivo: 'Leer 12 libros por año y poder explicar las ideas de cada uno.', metas: [{ mes: mesActual, texto: 'Terminar un libro y poder explicar sus 3 ideas principales con un ejemplo de cada una.' }] },
+  { id: 'ia', objetivo: 'Aprender y construir con IA: un proyecto propio por mes.', metas: [{ mes: mesActual, texto: 'Entender prompts de sistema, herramientas (tool use) y armar un asistente simple con la API de Claude.' }] },
+  { id: 'programacion', objetivo: 'Programar con soltura y publicar proyectos propios.', metas: [{ mes: mesActual, texto: 'Escribir funciones, listas y diccionarios en Python y resolver 5 ejercicios simples sin ayuda.' }] },
+]
+export const RUTA_INFO: Record<RutaId, { nombre: string; icon: string; actividades: string[]; evidencia: string }> = {
+  ingles: { nombre: 'Inglés', icon: 'languages', actividades: ['Escuchar', 'Película o serie', 'Canción', 'Hablar', 'Escribir', 'Leer'], evidencia: 'Escribí 3–5 líneas en inglés sobre lo que viste o escuchaste, o pegá el link.' },
+  lectura: { nombre: 'Lectura', icon: 'glasses', actividades: ['Libro', 'Artículo'], evidencia: 'Libro y páginas (desde–hasta) y la idea principal en una frase.' },
+  ia: { nombre: 'IA', icon: 'bot', actividades: ['Curso', 'Construir', 'Investigar'], evidencia: 'Link (curso, notebook, repo) y qué aprendiste en dos líneas.' },
+  programacion: { nombre: 'Programación', icon: 'code', actividades: ['Ejercicios', 'Proyecto', 'Curso'], evidencia: 'Link al commit o repo de GitHub. Si es público, la app verifica los commits del día.' },
+}
+
+export const CUENTAS: { id: CuentaId; nombre: string; icon: string }[] = [
+  { id: 'efectivo', nombre: 'Efectivo', icon: 'banknote' },
+  { id: 'mp', nombre: 'Mercado Pago', icon: 'smartphone' },
+  { id: 'santander', nombre: 'Santander', icon: 'landmark' },
+  { id: 'debito', nombre: 'Débito Visa', icon: 'credit-card' },
+  { id: 'credito', nombre: 'Crédito Visa', icon: 'credit-card' },
+]
+export const CATS_GASTO = ['Supermercado', 'Comida afuera', 'Delivery', 'Salidas', 'Transporte', 'Combustible', 'Ropa y estética', 'Gimnasio y suplementos', 'Salud y farmacia', 'Facultad', 'Tecnología e IA', 'Servicios y suscripciones', 'Regalos', 'Marmolería', 'Transferencias', 'Comida', 'Aporte a inversiones', 'Otros']
+export const CATS_INGRESO = ['Marmolería', 'Redes', 'Proyectos propios', 'Transferencia recibida', 'Otros']
+
+/** Preguntas para el diario, por tema. */
+export const PREGUNTAS_DIARIO: Record<string, string[]> = {
+  Guiado: ['¿Qué pasó hoy que valga la pena recordar?', '¿Qué sentiste y en qué momento?', '¿Qué harías distinto mañana?'],
+  Soledad: ['¿En qué momento de hoy te sentiste más solo? ¿Qué estaba pasando?', '¿Con quién te gustaría hablar esta semana y qué le dirías?', '¿Qué te frena a escribirle primero a alguien del grupo?'],
+  Enojo: ['¿Qué te hizo enojar hoy, exactamente?', '¿Qué parte de eso dependía de vos y qué no?', 'Si un amigo te contara esto, ¿qué le dirías?'],
+  Bucle: ['¿Qué hiciste hoy igual que todos los días?', '¿Qué cosa nueva, aunque sea chica, podrías hacer esta semana?', '¿Qué versión de vos querés ver dentro de un año y qué hizo hoy para llegar?'],
+  Orgullo: ['¿Qué hiciste hoy de lo que estés orgulloso?', '¿Qué te costó y lo hiciste igual?', '¿Quién te ayudó a llegar hasta acá?'],
+  Futuro: ['¿Qué querés que sea distinto en 3 meses?', '¿Qué decisión estás postergando?', '¿Cuál es el paso más chico que podés dar mañana?'],
+  Amistad: ['¿Con quién te sentiste cerca esta semana?', '¿Qué amistad querés cuidar más y cómo?', '¿Qué plan podrías proponer este fin de semana?'],
+}

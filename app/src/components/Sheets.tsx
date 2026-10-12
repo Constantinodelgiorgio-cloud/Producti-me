@@ -42,16 +42,16 @@ export const Sheet = ({ label, children }: { label: string; children: ReactNode 
   )
 }
 
-const TILES: { icon: string; n: string; s: string; go?: [Route, string?]; act?: 'checkin' }[] = [
-  { icon: 'utensils', n: 'Comida', s: 'Repetí o buscá', go: ['comida'] },
-  { icon: 'dumbbell', n: 'Entrenamiento', s: 'Sesión del día', go: ['fisico', 'entreno'] },
-  { icon: 'timer', n: 'Estudio', s: 'Temporizador', go: ['estudio'] },
-  { icon: 'receipt', n: 'Gasto o ingreso', s: 'En USD', go: ['finanzas', 'movimientos'] },
-  { icon: 'message-circle', n: 'Contacto', s: 'Amigos', go: ['vida', 'amigos'] },
-  { icon: 'notebook-pen', n: 'Diario', s: 'Texto o voz', go: ['vida', 'diario'] },
-  { icon: 'ruler', n: 'Medidas', s: 'Peso y grasa', go: ['fisico', 'cuerpo'] },
-  { icon: 'sun', n: 'Check-in', s: 'Mañana o noche', act: 'checkin' },
-  { icon: 'piggy-bank', n: 'Ahorro', s: 'Valor actual', go: ['finanzas', 'valores'] },
+const TILES: { icon: string; n: string; s: string; go?: [Route, string?]; act?: 'checkin'; tone: string }[] = [
+  { icon: 'utensils', n: 'Comida', s: 'Buscá o repetí', go: ['comida'], tone: 'fisico' },
+  { icon: 'receipt', n: 'Gasto', s: 'En pesos', go: ['finanzas', 'movimientos'], tone: 'finanzas' },
+  { icon: 'file-text', n: 'Comprobante', s: 'Foto o texto', go: ['finanzas', 'comprobante'], tone: 'finanzas' },
+  { icon: 'dumbbell', n: 'Entrenamiento', s: 'Sesión del día', go: ['fisico', 'entreno'], tone: 'fisico' },
+  { icon: 'timer', n: 'Estudio', s: 'Con evidencia', go: ['estudio'], tone: 'estudio' },
+  { icon: 'message-circle', n: 'Contacto', s: 'Amigos', go: ['vida', 'amigos'], tone: 'vida' },
+  { icon: 'feather', n: 'Diario', s: 'Escribir', go: ['vida', 'diario'], tone: 'vida' },
+  { icon: 'sun', n: 'Check-in', s: 'Mañana o noche', act: 'checkin', tone: 'hoy' },
+  { icon: 'sparkles', n: 'Coach', s: 'Contale algo', go: ['coach'], tone: 'coach' },
 ]
 
 export const RegistrarSheet = () => {
@@ -75,7 +75,7 @@ export const RegistrarSheet = () => {
       </>}
       <div className="log-grid">
         {TILES.map((t) => (
-          <button key={t.n} className="log-tile" onClick={() => t.act ? ui.openSheet(new Date().getHours() >= 17 ? 'checkin-noche' : 'checkin-manana') : ui.go(t.go![0] as Route, t.go![1])}>
+          <button key={t.n} className="log-tile" data-s={t.tone} onClick={() => t.act ? ui.openSheet(new Date().getHours() >= 17 ? 'checkin-noche' : 'checkin-manana') : ui.go(t.go![0] as Route, t.go![1])}>
             <Icon name={t.icon} size={19} /><span>{t.n}<small>{t.s}</small></span>
           </button>
         ))}

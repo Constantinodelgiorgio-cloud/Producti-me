@@ -1,6 +1,6 @@
 import type { Data } from './store'
-import type { AreaId, Habit, Medal, Momento, Snapshot } from './types'
-import { addDays, diffDays, dow, today, weekDays, weekStart, uid } from './date'
+import type { AgendaItem, AreaId, Habit, Medal, Momento, Penalty, Snapshot } from './types'
+import { addDays, diffDays, dow, iso, today, weekDays, weekStart, uid } from './date'
 import { AREAS, PENALTIES } from './seed'
 
 // ---------- Hábitos y medallas ----------
@@ -8,6 +8,22 @@ export const habitsFor = (habits: Habit[], fecha: string) =>
   habits.filter((h) => h.activo && (h.dias.length === 0 || h.dias.includes(dow(fecha))))
 
 const score = (s?: string) => (s === 'hecho' ? 1 : s === 'minimo' ? 0.5 : 0)
+
+/** Agenda de una fecha: la del plan puntual si existe; si no, la base del día de la semana. */
+export const agendaDe = (d: Pick<Data, 'planDia' | 'profile'>, fecha: string): AgendaItem[] =>
+  [...(d.planDia?.[fecha]?.agenda ?? d.profile.agenda[dow(fecha)] ?? [])].sort((a, b) => a.hora.localeCompare(b.hora))
+export const excusaDe = (d: Pick<Data, 'planDia'>, fecha: string, habitId: string) => d.planDia?.[fecha]?.excusas?.[habitId]
+
+/**
+ * Puntaje de un hábito en una fecha. Un hábito excusado no cuenta (sale del total);
+ * si la excusa trae una alternativa realizada, cuenta como versión mínima.
+ */
+export const habitScore = (d: Data, f: string, h: Habit): number | null => {
+  const st = d.habitLog[f]?.[h.id]
+  const ex = excusaDe(d, f, h.id)
+  if (ex && !st) return ex.alternativa ? 0.5 : null
+  return score(st)
+}
 
 /** Cumplimiento 0–1 de una lista de fechas, opcionalmente filtrado por área. */
 export const compliance = (d: Data, fechas: string[], area?: AreaId) => {
@@ -18,8 +34,10 @@ export const compliance = (d: Data, fechas: string[], area?: AreaId) => {
   for (const f of fechas.filter((x) => x >= d.inicio && (x < t || d.habitLog[x]))) {
     for (const h of habitsFor(d.habits, f)) {
       if (area && h.area !== area) continue
+      const sc = habitScore(d, f, h)
+      if (sc === null) continue
       total++
-      done += score(d.habitLog[f]?.[h.id])
+      done += sc
     }
   }
   return total === 0 ? null : done / total
@@ -64,19 +82,53 @@ export const streak = (d: Data, habitId: string) => {
 }
 
 // ---------- XP y niveles ----------
+/** XP de una sesión de estudio: sin evidencia rinde la mitad; con evidencia suma un bono grande. */
+export const sessionXp = (s: { minutos: number; tipo: string; evidencia?: { verificado?: boolean } }) => {
+  if (s.tipo === 'facultad') return Math.round(s.minutos / 3)
+  if (!s.evidencia) return Math.round(s.minutos / 6)
+  return Math.round(s.minutos / 3) + (s.evidencia.verificado ? 40 : 25)
+}
+export const XP_TEST = { aprobado: 150, intento: 20 }
+
+/** Fechas (locales) cubiertas por sanciones: en esos días no se gana XP. */
+export const bannedDays = (d: Pick<Data, 'sanciones'>) => {
+  const out = new Set<string>()
+  for (const s of d.sanciones ?? []) {
+    let f = iso(new Date(s.desde))
+    const hasta = iso(new Date(s.hasta))
+    for (let i = 0; f <= hasta && i < 60; i++) { out.add(f); f = addDays(f, 1) }
+  }
+  return out
+}
+export const sancionActiva = (d: Pick<Data, 'sanciones'>, now = Date.now()) =>
+  (d.sanciones ?? []).filter((s) => new Date(s.desde).getTime() <= now && new Date(s.hasta).getTime() > now).sort((a, b) => b.hasta.localeCompare(a.hasta))[0]
+
 export const totalXp = (d: Data) => {
+  const ban = bannedDays(d)
+  const ok = (f: string) => !ban.has(f)
   let xp = 0
-  for (const [, log] of Object.entries(d.habitLog))
+  for (const [f, log] of Object.entries(d.habitLog)) {
+    if (!ok(f)) continue
     for (const [id, st] of Object.entries(log)) {
       const h = d.habits.find((x) => x.id === id)
       if (h) xp += h.xp * score(st)
     }
-  xp += Object.keys(d.checkins).length * 10
-  xp += d.workouts.length * 30
-  xp += d.study.reduce((a, s) => a + Math.round(s.minutos / 3), 0)
-  xp += d.journal.length * 10
-  xp += d.social.reduce((a, s) => a + (s.tipo === 'juntada' ? 40 : 15), 0)
+  }
+  // Excusas con alternativa realizada: media XP.
+  for (const [f, p] of Object.entries(d.planDia ?? {})) {
+    if (!ok(f)) continue
+    for (const [id, ex] of Object.entries(p.excusas ?? {})) {
+      const h = d.habits.find((x) => x.id === id)
+      if (h && ex.alternativa && !d.habitLog[f]?.[id]) xp += h.xp / 2
+    }
+  }
+  xp += Object.keys(d.checkins).filter(ok).length * 10
+  xp += d.workouts.filter((w) => ok(w.fecha)).length * 30
+  xp += d.study.filter((s) => ok(s.fecha)).reduce((a, s) => a + sessionXp(s), 0)
+  xp += d.journal.filter((j) => ok(j.fecha)).reduce((a, j) => a + (j.modo && j.modo !== 'libre' ? 15 : 10), 0)
+  xp += d.social.filter((s) => ok(s.fecha)).reduce((a, s) => a + (s.tipo === 'juntada' ? 40 : 15), 0)
   xp += d.penalties.filter((p) => p.hecho).length * 20
+  for (const r of d.rutas ?? []) for (const m of r.metas) if (m.test && ok(m.test.fecha)) xp += m.test.aprobado ? XP_TEST.aprobado : XP_TEST.intento
   xp += d.xpAdjust.reduce((a, x) => a + x.xp, 0)
   return Math.max(0, Math.round(xp))
 }
@@ -103,6 +155,28 @@ export const levelInfo = (xp: number) => {
 
 // ---------- Castigos y premios automáticos ----------
 const pick = <T,>(arr: T[], seed: string) => arr[[...seed].reduce((a, c) => a + c.charCodeAt(0), 0) % arr.length]
+export const PENALTY_HOURS = 48
+export const SANCION_HOURS = 72
+const nuevoCastigo = (motivo: string, tarea: string): Penalty => {
+  const now = Date.now()
+  return { id: uid(), fecha: today(), motivo, tarea, hecho: false, creado: new Date(now).toISOString(), vence: new Date(now + PENALTY_HOURS * 3600e3).toISOString() }
+}
+/** Tiempo restante de un castigo: fracción 0–1 que queda y si venció. */
+export const penaltyTime = (p: Penalty, now = Date.now()) => {
+  const fin = p.vence ? new Date(p.vence).getTime() : now + PENALTY_HOURS * 3600e3
+  const ini = p.creado ? new Date(p.creado).getTime() : fin - PENALTY_HOURS * 3600e3
+  const left = fin - now
+  return { left, frac: Math.max(0, Math.min(1, left / (fin - ini))), vencido: left <= 0 }
+}
+export const fmtLeft = (ms: number) => {
+  if (ms <= 0) return 'vencido'
+  const h = Math.floor(ms / 3600e3)
+  const m = Math.floor((ms % 3600e3) / 60e3)
+  return h >= 1 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
+}
+/** Castigos pendientes, del más urgente al menos urgente. */
+export const castigosPendientes = (d: Pick<Data, 'penalties'>) =>
+  d.penalties.filter((p) => !p.hecho && !penaltyTime(p).vencido).sort((a, b) => penaltyTime(a).left - penaltyTime(b).left)
 
 /** Revisa días/semanas cerrados y genera castigos y permitidos. Devuelve el parche o null. */
 export const processRules = (d: Data): Partial<Data> | null => {
@@ -111,8 +185,19 @@ export const processRules = (d: Data): Partial<Data> | null => {
   const rewards = [...d.rewards]
   const xpAdjust = [...d.xpAdjust]
   const t = today()
+  const sanciones = [...(d.sanciones ?? [])]
+  let tocado = false
+  // Castigo vencido: sin permitidos y sin ganar XP durante 72 h (una sanción por castigo).
+  for (let i = 0; i < penalties.length; i++) {
+    const p = penalties[i]
+    if (p.hecho || p.sancionado || !penaltyTime(p).vencido) continue
+    const desde = new Date(p.vence!).getTime()
+    sanciones.push({ id: uid(), desde: new Date(desde).toISOString(), hasta: new Date(desde + SANCION_HOURS * 3600e3).toISOString(), motivo: `Venció: ${p.tarea}` })
+    penalties[i] = { ...p, sancionado: true }
+    tocado = true
+  }
   const firstDay = Object.keys(d.habitLog).sort()[0]
-  if (!firstDay) return null
+  if (!firstDay) return tocado ? { penalties, sanciones } : null
 
   // Día flojo: ayer con menos del 50 % de hábitos.
   const ayer = addDays(t, -1)
@@ -121,7 +206,7 @@ export const processRules = (d: Data): Partial<Data> | null => {
     processed.add(kDay)
     const c = compliance(d, [ayer])
     if (c !== null && c < 0.5) {
-      penalties.push({ id: uid(), fecha: t, motivo: `Ayer cumpliste ${Math.round(c * 100)} % de los hábitos`, tarea: pick(PENALTIES.general, ayer), hecho: false })
+      penalties.push(nuevoCastigo(`Ayer cumpliste ${Math.round(c * 100)} % de los hábitos`, pick(PENALTIES.general, ayer)))
     }
   }
 
@@ -136,7 +221,7 @@ export const processRules = (d: Data): Partial<Data> | null => {
     for (const [area, v] of Object.entries(wm.areas)) {
       if (v?.m !== 'malo') continue
       const lista = area === 'fisico' ? PENALTIES.fisico : area === 'estudio' ? PENALTIES.estudio : PENALTIES.general
-      penalties.push({ id: uid(), fecha: t, motivo: `Semana mala en ${AREAS.find((a) => a.id === area)?.nombre}`, tarea: pick(lista, prevWeek + area), hecho: false })
+      penalties.push(nuevoCastigo(`Semana mala en ${AREAS.find((a) => a.id === area)?.nombre}`, pick(lista, prevWeek + area)))
     }
   }
 
@@ -153,8 +238,8 @@ export const processRules = (d: Data): Partial<Data> | null => {
     }
   }
 
-  if (processed.size === d.processed.length) return null
-  return { processed: [...processed], penalties, rewards, xpAdjust }
+  if (processed.size === d.processed.length && !tocado) return null
+  return { processed: [...processed], penalties, rewards, xpAdjust, sanciones }
 }
 
 // ---------- Físico ----------
@@ -192,7 +277,8 @@ export const last = (s: Snapshot[]) => [...s].sort((a, b) => a.fecha.localeCompa
 export const portfolioReturn = (d: Data) => {
   const p = d.portfolio.filter((x) => x.fecha >= d.profile.rendimientoDesde).sort((a, b) => a.fecha.localeCompare(b.fecha))
   if (p.length < 2) return null
-  const aportes = d.money.filter((m) => m.categoria === 'Aporte a inversiones' && m.fecha > p[0].fecha).reduce((a, m) => a + m.monto, 0)
+  // Aportes y retiros en USD (Patrimonio): no cuentan como rendimiento.
+  const aportes = (d.aportes ?? []).filter((m) => m.fecha > p[0].fecha).reduce((a, m) => a + (m.retiro ? -m.usd : m.usd), 0)
   return (p.at(-1)!.valor - aportes - p[0].valor) / p[0].valor
 }
 export interface Candle { label: string; open: number; close: number; high: number; low: number }
@@ -219,8 +305,8 @@ export interface Note { icon: string; text: string; tone?: 'warn' | 'good' | 'in
 export const avisos = (d: Data): Note[] => {
   const t = today()
   const out: Note[] = []
-  for (const p of d.penalties.filter((x) => !x.hecho))
-    out.push({ icon: 'alert', text: `Castigo pendiente: ${p.tarea} (${p.motivo}). Los permitidos están bloqueados hasta cumplirlo.`, tone: 'warn', go: 'habitos', action: 'Ver' })
+  const san = sancionActiva(d)
+  if (san) out.push({ icon: 'alert', text: `Sanción activa hasta ${new Date(san.hasta).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}: sin XP y sin permitidos (${san.motivo}).`, tone: 'warn' })
   for (const e of d.exams.filter((x) => x.fecha >= t && diffDays(x.fecha, t) <= 21).sort((a, b) => a.fecha.localeCompare(b.fecha))) {
     const m = d.subjects.find((s) => s.id === e.materiaId)
     const n = diffDays(e.fecha, t)
@@ -229,7 +315,7 @@ export const avisos = (d: Data): Note[] => {
   if (dow(t) === 6 && !d.reviews.find((r) => r.semana === weekStart(t))) out.push({ icon: 'calendar-check', text: 'Hoy toca la revisión semanal (15–20 min).', tone: 'info', go: 'revision', action: 'Abrir' })
   if (d.exams.length === 0) out.push({ icon: 'pin', text: 'Faltan las fechas de parciales (noviembre) y finales (diciembre).', tone: 'warn', go: 'estudio', action: 'Cargar' })
   const disponibles = d.rewards.filter((r) => !r.usado).length
-  if (disponibles && !d.penalties.some((p) => !p.hecho)) out.push({ icon: 'gift', text: `Tenés ${disponibles} permitido${disponibles > 1 ? 's' : ''} ganado${disponibles > 1 ? 's' : ''}.`, tone: 'good', go: 'habitos', action: 'Ver' })
+  if (disponibles && !castigosPendientes(d).length && !san) out.push({ icon: 'gift', text: `Tenés ${disponibles} permitido${disponibles > 1 ? 's' : ''} ganado${disponibles > 1 ? 's' : ''}.`, tone: 'good', go: 'habitos', action: 'Ver' })
   return out
 }
 
@@ -238,7 +324,7 @@ export const recomendaciones = (d: Data): Note[] => {
   const out: Note[] = []
   const ci = d.checkins[t]
   const hs = sleepHours(ci?.horaDormir, ci?.horaDespertar)
-  const agendaHoy = d.profile.agenda[dow(t)]
+  const agendaHoy = agendaDe(d, t)
   const intensidad = agendaHoy.find((a) => a.intensidad)?.intensidad
 
   if (hs !== null && hs < d.profile.suenoMin)
@@ -266,9 +352,12 @@ export const recomendaciones = (d: Data): Note[] => {
   }
 
   const semana = weekSoFar()
-  const minAprendizaje = d.study.filter((s) => semana.includes(s.fecha) && s.tipo !== 'facultad').reduce((a, s) => a + s.minutos, 0)
+  const ses = d.study.filter((s) => semana.includes(s.fecha) && s.tipo !== 'facultad')
+  const minAprendizaje = ses.reduce((a, s) => a + s.minutos, 0)
   const esperado = (d.profile.horasAprendizaje * 60 * semana.length) / 7
-  if (minAprendizaje < esperado * 0.7) out.push({ icon: 'bot', text: `IA + inglés + lectura: llevás ${Math.round(minAprendizaje / 60)} h de ${Math.round(esperado / 60)} h esperadas a esta altura de la semana.` })
+  if (minAprendizaje < esperado * 0.7) out.push({ icon: 'bot', text: `IA, inglés, lectura y programación: llevás ${Math.round(minAprendizaje / 60)} h de ${Math.round(esperado / 60)} h esperadas a esta altura de la semana.`, go: 'estudio', action: 'Estudiar' })
+  const sinEv = ses.filter((s) => !s.evidencia).length
+  if (sinEv >= 2) out.push({ icon: 'target', text: `${sinEv} sesiones de esta semana no tienen evidencia: rinden la mitad de XP. Sumá un link, una foto o 3 líneas.`, go: 'estudio', action: 'Agregar' })
 
   const rutina = d.journal.filter((j) => diffDays(t, j.fecha) <= 7).length
   if (rutina === 0) out.push({ icon: 'notebook-pen', text: 'Una semana sin journaling. Escribí 3 líneas hoy: qué te molestó, qué salió bien, qué cambiarías.' })
@@ -303,20 +392,22 @@ export const MOMENTOS: { id: Momento; label: string; hasta: string }[] = [
   { id: 'tarde', label: 'Tarde', hasta: 'antes de la cena' },
   { id: 'noche', label: 'Noche', hasta: 'cierre del día' },
 ]
-/** Momento del día de un hábito: el elegido o uno deducido del nombre. */
-export const momentoDe = (h: Habit): Momento => {
+/** Momento del día de un hábito: el cambiado para esa fecha, el elegido o uno deducido del nombre. */
+export const momentoDe = (h: Habit, d?: Pick<Data, 'planDia'>, fecha?: string): Momento => {
+  const o = d && fecha ? d.planDia?.[fecha]?.momentos?.[h.id] : undefined
+  if (o) return o
   if (h.momento) return h.momento
   const n = h.nombre.toLowerCase()
   if (/mañana|movilidad|clindamicina/.test(n)) return 'manana'
   if (/noche|journal|lectura|celular|dormir|manos|registrar ingresos/.test(n)) return 'noche'
-  if (/entren|estudio|inglés|ia |plan|algo fuera|marmoler|portafolio|escribirle/.test(n)) return 'tarde'
+  if (/entren|estudio|inglés|ia |programaci|plan|algo fuera|marmoler|portafolio|escribirle/.test(n)) return 'tarde'
   return 'dia'
 }
 export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
 export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 /** Próximo bloque de la agenda de hoy (o el que está en curso, hasta 60 min). */
 export const agendaAhora = (d: Data) => {
-  const items = d.profile.agenda[dow(today())] ?? []
+  const items = agendaDe(d, today())
   const n = nowMin()
   const next = items.find((a) => toMin(a.hora) >= n - 60 && toMin(a.hora) + 60 > n) ?? items.find((a) => toMin(a.hora) > n)
   return next ? { ...next, faltan: toMin(next.hora) - n } : null
