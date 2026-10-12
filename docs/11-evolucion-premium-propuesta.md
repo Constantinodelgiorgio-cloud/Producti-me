@@ -531,7 +531,7 @@ Cada etapa termina con algo que podés usar en el iPhone, verificado a 390 y 144
 
 ### B.8 Dudas que necesitan tu aprobación
 
-1. **Navegación**: ¿Opción A (Hoy · Hábitos · ＋ · Coach · Áreas), que reemplaza la barra Fijada aprobada? ¿O preferís B o C (B.3.9)?
+1. **Navegación**: ¿Opción A (Hoy · Hábitos · ＋ · Coach · Áreas), que reemplaza la barra Fijada aprobada? ¿O preferís B o C (B.3.9)? 
 2. **Identidad por sección**: ¿tonos ambientales por sección (cobre, índigo, jade, malva, plata) o un solo color en toda la app (B.5.1)?
 3. **Excusar hábitos**: cuando el Coach excusa un hábito ("no puedo entrenar hoy"), ¿no cuenta para las medallas? ¿Con qué límite? Propongo **2 excusas por semana en total**, con motivo obligatorio y visibles en la revisión.
 4. **Coach sin confirmación**: ¿estás de acuerdo con que registrar comida, gasto o contacto se aplique directo (con Deshacer), y que solo la agenda, los hábitos y la semana pidan confirmación?
@@ -545,6 +545,22 @@ Cada etapa termina con algo que podés usar en el iPhone, verificado a 390 y 144
 12. **Diario**: ¿la serif de lectura en el modo escritura, o mantener Geist en toda la app?
 13. **Ícono**: ¿confirmás "Horizonte" para maquetar con más detalle, o querés ver las cuatro antes de elegir?
 
+
+###B.9 Dudas resueltas 
+
+1. **Navegacion**: opcion A 
+2. **Identidad por seccion**: prefiero que sea colores por seccion, la transición de colores me gustaria que sea progresiva, no me gusta los cambios bruscos y sin efectos
+3. **Excusar habitos**: las excusas deben ser fundamentadas y deben tenere una espwcificacion. hoy no fui a la faculta por que me dormi seria una excusa injtil que no aporta al progreso. hoy no pude ir a la facultad ya que tuve una charla con provedores de la marmoleria es algo real. hoy no entrene en el gimnasio porque cerro por refacciones pero sali a correr, esas son las excusas que quiero poder poner 
+4. ** coach sin confirmación**: si estoy de acuerdo 
+5. ** habitos**:  me gustaria grilla primcipal en formato iconos y interactivos, las opciones de no hacer me gustaron la de mantener en iconos y deslizar en lista 
+6. ** Finanzas**: los datos cargados en la parte de finanzas si dicen USD, lo que estoy agregando son los movimientos de plata diarios, ya que uo consumo en pesos pero ahorro mi portfolio en usd 
+7. ** cuentas de la cartera diaria**: efectivo, mercado pago, santander home banking, tajeta de debito y credito visa. quiero generar resumenes de gastos y separarlos en catehorias asi el desarrollo llega a tdos los aspectos de mi vida 
+8. **Correo**: me gustaria que sea automatico, que sea gasto en MP o Home  banking, llega el correo, la app tambien lo ve, ya queda anotado.
+9. **Rutas de estudio**: desarrollar un ingles profesional y cotidiano de nivel alto. un objetivo seria mirar peliculas comoletas en ingles sin subtitulos y entenderlas al 100, o cantar musicas enteras en ingles 
+10. ** verificacion**: me gustaria que la evidencia sume mucho XP, que sea algo casi que obligatorio, no porque no me deje sino por lo que me pierdon por no poner, me gustari una mini test de objetivos clmo por ejemplo, en un mes tenes que saber hacer esto de programación, y pasado el mes tener una mini prieba rapida y sencilla 
+11. ** castigos**: vencimiento cada 48hs, con una ilustracion que demuestre como va acabandose em tiempo y de los mas urgentes a los menos, si sen vence un castigo es prohibicion de permitidos y prohibincuon de ganar XP por cierto tiempo 
+12. ** diario**: la serif me parece correcto 
+13. ** icono**: confirmo "HORIZONTE"
 ---
 
 ## Próximo paso
