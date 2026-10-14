@@ -927,3 +927,33 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .disco.d10 { height: 48px; background: color-mix(in srgb, #5FBF92 30%, var(--surface-3)); }
 .disco.d5 { height: 40px; }
 .disco.d2_5, .disco.d1_25 { height: 32px; min-width: 26px; font-size: 10.5px; }
+
+/* Comida: proteína por comida */
+.mom-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prot-chip { font-family: var(--mono); font-size: 10.5px; letter-spacing: .02em; text-transform: none; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); color: var(--t3); box-shadow: inset 0 0 0 1px var(--line); }
+.prot-chip.ok { color: var(--success); box-shadow: inset 0 0 0 1px rgba(95,191,146,.4); }
+
+/* Tareas y cierre */
+.tareas-list { padding: 6px 14px 12px; }
+.tarea { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tarea .tt { display: block; font-size: 14px; }
+.tarea small { display: block; font-size: 12px; color: var(--t3); margin-top: 2px; }
+.tarea.dificil .tt { font-weight: 600; }
+.tarea.done .tt { color: var(--t3); text-decoration: line-through; }
+.tarea-add { display: flex; gap: 8px; align-items: center; padding-top: 10px; }
+.tarea-add input { flex: 1; min-width: 0; }
+.tarea-add select { width: 88px !important; flex: none; }
+.capacidad { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; }
+.cap-bar { position: relative; height: 5px; border-radius: 5px; background: var(--surface-3); }
+.cap-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--tone); }
+.cap-bar b { position: absolute; top: -3px; width: 1px; height: 11px; background: var(--t3); }
+.capacidad.warn .cap-bar i { background: var(--warn); }
+.capacidad.over .cap-bar i { background: var(--danger); }
+.capacidad.over .cap { color: var(--t2); }
+.cierre-res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cierre-res > div { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.pend-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; }
+.pend-row small { display: block; font-size: 12px; margin-top: 4px; }
+
+.almac { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 12.5px; color: var(--t3); }
+.almac span { display: flex; align-items: center; gap: 8px; }

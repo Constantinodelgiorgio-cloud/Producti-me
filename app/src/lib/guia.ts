@@ -11,7 +11,8 @@
 import type { Fase } from './cuerpo'
 
 export interface Guia { sonido: boolean; vibracion: boolean; voz: boolean }
-export const GUIA_DEF: Guia = { sonido: true, vibracion: true, voz: true }
+/** En iPhone la vibración desde la web no es confiable: por defecto guían el sonido y la voz. */
+export const GUIA_DEF: Guia = { sonido: true, vibracion: typeof navigator !== 'undefined' && 'vibrate' in navigator, voz: true }
 
 // ---------- Sonido ----------
 export const NOTAS: Record<Fase | 'fin' | 'aviso' | 'cambio', number[]> = {

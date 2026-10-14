@@ -14,6 +14,7 @@ import { HabitTile } from '../components/HabitTile'
 import { CastigoBand } from '../components/Castigos'
 import { VueltaYEstado } from '../components/Estados'
 import { ListoCard } from '../components/Listo'
+import { TareasHoy } from '../components/Tareas'
 import { notasSueno } from '../lib/rendimiento'
 
 const greet = () => { const h = new Date().getHours(); return h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches' }
@@ -146,6 +147,8 @@ function Ahora() {
 
         <CastigoBand />
 
+        <TareasHoy />
+
         <ParaCompletar />
 
         <CoachBar />
@@ -153,10 +156,11 @@ function Ahora() {
 
       <aside className="stack rail">
         {/* Nivel 2 · cómo viene el día */}
-        {(!ci?.animoManana || (hour >= 17 && !ci?.animoNoche)) && (
+        {(!ci?.animoManana || (hour >= 17 && !ci?.animoNoche) || (hour >= 19 && !ci?.cerrado)) && (
           <div className="ci-row">
             {!ci?.animoManana && <button className="ci-btn" onClick={() => ui.openSheet('checkin-manana')}><Icon name="sun" size={20} /><span><b>Check-in de la mañana</b><small>20 s · sueño, energía y prioridad</small></span></button>}
             {hour >= 17 && !ci?.animoNoche && <button className="ci-btn" onClick={() => ui.openSheet('checkin-noche')}><Icon name="moon" size={20} /><span><b>Check-in de la noche</b><small>1 min · ánimo y victoria</small></span></button>}
+            {hour >= 19 && !ci?.cerrado && <button className="ci-btn" onClick={() => ui.openSheet('cierre')}><Icon name="sunset" size={20} /><span><b>Cerrar el día</b><small>30 s · pendientes y la difícil de mañana</small></span></button>}
           </div>
         )}
         <div className="sec" style={{ marginTop: 4 }}><span className="eyebrow">Cómo viene el día</span><span className="cap">tocá para ver la semana</span></div>

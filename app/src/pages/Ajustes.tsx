@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { get as idbGet } from 'idb-keyval'
 import { useStore, exportData, initialData, reiniciarDias, BACKUP_KEY, BACKUP_KEY_V2, type Data } from '../lib/store'
 import { codigoVinculo, combinarCopia, leerVinculo, sincronizar, useSync } from '../lib/sync'
@@ -17,11 +17,18 @@ export default function Ajustes() {
   const num = (k: keyof Profile, label: string, step = 1) => (
     <Field label={label} id={`p-${k}`}><input id={`p-${k}`} type="number" inputMode="decimal" step={step} value={P[k] as number} onChange={(e) => up({ [k]: Number(e.target.value) } as Partial<Profile>)} /></Field>
   )
-  const exportar = () => {
+  const exportar = async () => {
+    const nombre = `producti-me-${new Date().toISOString().slice(0, 10)}.json`
     const blob = new Blob([JSON.stringify(exportData())], { type: 'application/json' })
+    // En iPhone y iPad: hoja de compartir (guardar en Archivos, AirDrop, mandarlo por WhatsApp).
+    try {
+      const file = new File([blob], nombre, { type: 'application/json' })
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean }
+      if (nav.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Copia de Producti-Me' }); return }
+    } catch (e) { if (e instanceof DOMException && e.name === 'AbortError') return }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `producti-me-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = nombre
     a.click()
     ui.notify('Copia exportada')
   }
@@ -96,6 +103,7 @@ export default function Ajustes() {
             <button className="btn btn-primary" onClick={exportar}><Icon name="download" size={16} />Exportar copia</button>
             <label className="btn btn-quiet"><Icon name="upload" size={16} />Combinar una copia<input type="file" accept="application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importar(f); e.target.value = '' }} /></label>
           </div>
+          <Almacenamiento />
           <p className="cap" style={{ marginBottom: 14 }}>Copias automáticas previas a cada actualización: <button className="link-inline" onClick={() => bajar(BACKUP_KEY, 'producti-me-respaldo-v1.json')}>versión 1</button> · <button className="link-inline" onClick={() => bajar(BACKUP_KEY_V2, 'producti-me-respaldo-v2.json')}>antes del día 1</button></p>
           <div className="row danger-zone">
             <button className="btn btn-quiet" onClick={deCero}><Icon name="refresh" size={16} />Empezar de cero desde hoy</button>
@@ -171,5 +179,26 @@ function Conexion() {
         <p className="cap">La clave de la IA no se sincroniza: cargala en cada dispositivo.</p>
       </div>
     </section>
+  )
+}
+
+function Almacenamiento() {
+  const [info, setInfo] = useState<{ usado: number; cuota: number; persistente: boolean } | null>(null)
+  const sync = useSync()
+  useEffect(() => {
+    (async () => {
+      try {
+        const e = await navigator.storage?.estimate?.()
+        const p = await navigator.storage?.persisted?.()
+        if (e) setInfo({ usado: e.usage ?? 0, cuota: e.quota ?? 0, persistente: !!p })
+      } catch { /* sin soporte */ }
+    })()
+  }, [])
+  const mb = (b: number) => `${(b / 1048576).toFixed(1).replace('.', ',')} MB`
+  return (
+    <div className="almac">
+      <span><Icon name="layers" size={14} />{info ? `${mb(info.usado)} usados` : 'Calculando espacio…'}{info?.persistente ? ' · protegido contra borrado automático' : info ? ' · sin protección: instalá la app en la pantalla de inicio' : ''}</span>
+      <span><Icon name="refresh" size={14} />{sync.ultima ? `Última sincronización ${new Date(sync.ultima).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : 'Sin sincronizar en esta sesión'}</span>
+    </div>
   )
 }

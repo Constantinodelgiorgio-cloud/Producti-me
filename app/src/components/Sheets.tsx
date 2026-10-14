@@ -6,7 +6,7 @@ import { bedtimeFor, sleepHours } from '../lib/logic'
 import type { CheckIn, Pinned } from '../lib/types'
 import { Icon } from './Icon'
 import { LINEAS } from '../lib/seguridad'
-import { Field, Scale, VoiceText } from './ui'
+import { Field, NumInput, Scale, VoiceText } from './ui'
 
 /** Hoja inferior (diálogo centrado en escritorio): arrastrar para cerrar, Esc, foco atrapado. */
 export const Sheet = ({ label, children }: { label: string; children: ReactNode }) => {
@@ -116,10 +116,16 @@ export const CheckinSheet = ({ kind }: { kind: 'manana' | 'noche' }) => {
   const set = useStore((s) => s.set)
   const ui = useUI()
   const [d, setD] = useState<CheckIn>(() => ci ?? { fecha: f, horaDespertar: profile.despertar[dow(f)] })
+  const pesoHoy = useStore((s) => s.body.find((b) => b.fecha === f)?.peso)
+  const [peso, setPeso] = useState<number | undefined>(pesoHoy)
   const up = (p: Partial<CheckIn>) => setD((x) => ({ ...x, ...p }))
   const hs = sleepHours(d.horaDormir, d.horaDespertar)
   const save = () => {
-    set((s) => ({ checkins: { ...s.checkins, [f]: { ...(s.checkins[f] ?? { fecha: f }), ...d } } }))
+    set((s) => ({
+      checkins: { ...s.checkins, [f]: { ...(s.checkins[f] ?? { fecha: f }), ...d } },
+      // Pesarse en el mismo momento que el check-in casi duplica los días registrados.
+      ...(peso && peso !== pesoHoy ? { body: [...s.body.filter((b) => b.fecha !== f), { ...(s.body.find((b) => b.fecha === f) ?? { fecha: f }), peso }] } : {}),
+    }))
     ui.closeSheet()
     ui.notify(kind === 'manana' ? 'Check-in de la mañana guardado' : 'Check-in de la noche guardado')
   }
@@ -138,6 +144,7 @@ export const CheckinSheet = ({ kind }: { kind: 'manana' | 'noche' }) => {
           <Scale id="ci-do" max={5} label="Dolor muscular (1 = nada, 5 = mucho)" value={d.dolor} onChange={(n) => up({ dolor: n })} />
           <Scale id="ci-fa" max={5} label="Fatiga (1 = nada, 5 = mucha)" value={d.fatiga} onChange={(n) => up({ fatiga: n })} />
           <Scale id="ci-am" label="Ánimo" value={d.animoManana} onChange={(n) => up({ animoManana: n })} />
+          <Field label="Peso de hoy (opcional, en ayunas)" id="ci-peso"><NumInput id="ci-peso" value={peso} placeholder="kg" onValue={(n) => setPeso(n)} /></Field>
           <VoiceText id="ci-prio" rows={1} label="Prioridad n.º 1 de hoy" lang={lang} value={d.prioridad ?? ''} onChange={(v) => up({ prioridad: v })} placeholder="Si hoy solo hacés una cosa, ¿cuál es?" />
         </> : <>
           <Scale id="ci-an" label="Ánimo" value={d.animoNoche} onChange={(n) => up({ animoNoche: n })} />

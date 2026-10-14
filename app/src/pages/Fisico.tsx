@@ -7,6 +7,7 @@ import type { Exercise, Intensity, Photo, Workout } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Bar, Card, Empty, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 import { CargaCard, ListoCard } from '../components/Listo'
+import { adherencia, gastoAdaptativo, tendenciaPeso } from '../lib/nutricion'
 import { mantenerPantalla, sonar, vibrar } from '../lib/guia'
 import { BarC, LineC, PieC } from '../components/charts'
 
@@ -162,6 +163,7 @@ function Nutricion() {
         </Card>
       </div>
       <aside className="stack">
+        <GastoCard />
         <Card title="Calorías · 7 días" icon="flame"><BarC data={last7} x="dia" ys={[{ key: 'kcal', name: 'kcal' }]} target={P.kcalObjetivo} height={170} /></Card>
         <Card title="Proteína · 7 días" icon="beef"><BarC data={last7} x="dia" ys={[{ key: 'prot', name: 'Proteína (g)', color: '#C9D0DC' }]} target={P.protObjetivo} height={150} /></Card>
       </aside>
@@ -189,6 +191,7 @@ function Cuerpo() {
   const [tipo, setTipo] = useState<Photo['tipo']>('frente')
   const body = d.body.slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
   const data = body.map((b) => ({ f: b.fecha.slice(5).replace('-', '/'), peso: b.peso, grasa: b.grasa, magra: b.peso && b.grasa ? +(b.peso * (1 - b.grasa / 100)).toFixed(1) : undefined }))
+  const tend = tendenciaPeso(d)
   const fotos = d.photos.filter((p) => p.tipo === tipo).sort((a, b) => a.fecha.localeCompare(b.fecha))
   const lastB = body.at(-1)
   const save = (ev: React.FormEvent) => {
@@ -210,7 +213,12 @@ function Cuerpo() {
           <div className="kpi"><span className="cap">Grasa</span><span><span className="val-l">{lastB?.grasa?.toLocaleString('es-AR') ?? '—'}</span><span className="unit">% · meta {d.profile.grasaObjetivo}</span></span></div>
           <div className="kpi"><span className="cap">Masa magra</span><span><span className="val-l">{lastB?.peso && lastB.grasa ? (lastB.peso * (1 - lastB.grasa / 100)).toFixed(1).replace('.', ',') : '—'}</span><span className="unit">kg</span></span></div>
         </div>
-        <Card title="Peso y masa magra" icon="trending-down"><LineC data={data} x="f" ys={[{ key: 'peso', name: 'Peso' }, { key: 'magra', name: 'Masa magra', color: '#C9D0DC' }]} target={d.profile.pesoObjetivo} /></Card>
+        <Card title="Peso: tendencia y balanza" icon="trending-down">
+          {tend.length > 1 ? <LineC data={tend.slice(-60).map((x) => ({ f: x.f.slice(5).replace('-', '/'), tendencia: x.tendencia, peso: x.peso }))} x="f" ys={[{ key: 'tendencia', name: 'Tendencia' }, { key: 'peso', name: 'Balanza', color: '#7C828E' }]} target={d.profile.pesoObjetivo} />
+            : <p className="cap">Con dos pesajes aparece la tendencia.</p>}
+          <p className="cap">La balanza sube y baja por agua, sal y comida; la tendencia (cada día se mueve un 10 % hacia el peso medido) muestra lo real. Pesate a la mañana, después del baño.</p>
+        </Card>
+        <Card title="Masa magra" icon="dumbbell"><LineC data={data} x="f" ys={[{ key: 'peso', name: 'Peso' }, { key: 'magra', name: 'Masa magra', color: '#C9D0DC' }]} height={170} /></Card>
         <Card title="Grasa corporal" icon="flame"><LineC data={data} x="f" ys={[{ key: 'grasa', name: '% grasa' }]} target={d.profile.grasaObjetivo} height={170} />
           <p className="cap" style={{ marginTop: 8 }}>Meta: menos de {d.profile.grasaObjetivo} % manteniendo ~{d.profile.pesoObjetivo} kg. Cada punto que bajás suma un permitido.</p></Card>
       </div>
@@ -295,6 +303,35 @@ function Discos() {
       </div>
       <div className="discos" aria-label="Discos por lado">{usados.length ? usados.map((p, i) => <span key={i} className={`disco d${String(p).replace('.', '_')}`}>{String(p).replace('.', ',')}</span>) : <span className="cap">Solo la barra</span>}</div>
       {lado > 0.01 && <p className="cap">Faltan {String(Math.round(lado * 200) / 100).replace('.', ',')} kg por lado que no se arman con discos comunes.</p>}
+    </section>
+  )
+}
+
+/** Gasto calórico que aprende de vos (comida + tendencia del peso), con un objetivo de ~0,7 % por semana. */
+function GastoCard() {
+  const d = useStore()
+  const ui = useUI()
+  const G = gastoAdaptativo(d)
+  const ad = adherencia(d)
+  const usar = () => {
+    if (!G.sugerido) return
+    const prev = d.profile.kcalObjetivo
+    d.set((s) => ({ profile: { ...s.profile, kcalObjetivo: G.sugerido! } }))
+    ui.notify(`Objetivo: ${G.sugerido.toLocaleString('es-AR')} kcal por día`, () => d.set((s) => ({ profile: { ...s.profile, kcalObjetivo: prev } })))
+  }
+  return (
+    <section className="panel pad gasto">
+      <h2 className="h2"><Icon name="gauge" size={16} />Tu gasto, aprendido de vos</h2>
+      {G.tdee ? <>
+        <div className="carga-kpis">
+          <div><span className="cap">Gasto estimado</span><span className="val-m num">{G.tdee.toLocaleString('es-AR')}</span><small className="cap">kcal por día</small></div>
+          <div><span className="cap">Comiste en promedio</span><span className="val-m num">{G.ingestaMedia?.toLocaleString('es-AR')}</span><small className="cap">kcal ({G.registrados} días completos)</small></div>
+          <div><span className="cap">Tendencia</span><span className="val-m num">{G.cambioSemanalKg! > 0 ? '+' : ''}{String(G.cambioSemanalKg).replace('.', ',')}</span><small className="cap">kg por semana</small></div>
+        </div>
+        <p className="body-2" style={{ marginTop: 14 }}>Para bajar ~{String(G.ritmoObjetivoKg).replace('.', ',')} kg por semana (0,7 % de tu peso, el ritmo que cuida músculo y fuerza): <b>{G.sugerido?.toLocaleString('es-AR')} kcal</b> por día. Tu objetivo actual es {d.profile.kcalObjetivo.toLocaleString('es-AR')}.</p>
+        {G.sugerido !== d.profile.kcalObjetivo && <button className="btn btn-quiet" style={{ marginTop: 10 }} onClick={usar}>Usar {G.sugerido?.toLocaleString('es-AR')} kcal como objetivo</button>}
+      </> : <p className="body-2">{G.motivo}</p>}
+      <p className="cap" style={{ marginTop: 12 }}>Días completos (2 comidas o más) en la última semana: {ad}/7. No hace falta que sean perfectos: lo que se registra con honestidad, aunque te pases, es lo que hace que el cálculo funcione.</p>
     </section>
   )
 }

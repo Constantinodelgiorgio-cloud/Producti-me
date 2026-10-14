@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { dayNutrition } from '../lib/logic'
-import { fmtShort, today, uid } from '../lib/date'
+import { addDays, fmtShort, today, uid } from '../lib/date'
 import { ALIMENTOS, buscar, CATEGORIAS, macros } from '../lib/foods'
 import type { Alimento, CategoriaAlimento, ComidaGuardada, MomentoComida } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Bar, Card, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
+import { protPorComida } from '../lib/nutricion'
 
 type Sel = { key: string; foodId?: string; nombre: string; gramos?: number; kcal: number; prot: number; carb: number; grasa: number }
 const MOMENTOS: [MomentoComida, string][] = [['desayuno', 'Desayuno'], ['almuerzo', 'Almuerzo'], ['merienda', 'Merienda'], ['cena', 'Cena'], ['snack', 'Snack']]
@@ -65,13 +66,23 @@ export default function Comida() {
     if (m) ui.notify(`${m.nombre} borrado`, () => d.set((s) => ({ meals: [...s.meals, m] })), 'neutral')
   }
   const dayMeals = d.meals.filter((m) => m.fecha === fecha)
+  const metaComida = protPorComida(d)
+  // "Repetir lo de ayer" para el momento elegido: el atajo que más tiempo ahorra.
+  const ayerMomento = d.meals.filter((m) => m.fecha === addDays(fecha, -1) && (m.momento ?? 'snack') === momento)
+  const repetirAyer = () => {
+    const nuevas = ayerMomento.map((m) => ({ ...m, id: uid(), fecha }))
+    d.set((s) => ({ meals: [...s.meals, ...nuevas] }))
+    const ids = nuevas.map((m) => m.id)
+    ui.notify(`${nuevas.length} alimento${nuevas.length > 1 ? 's' : ''} de ayer · +${Math.round(nuevas.reduce((a, m) => a + m.kcal, 0))} kcal`, () => d.set((s) => ({ meals: s.meals.filter((x) => !ids.includes(x.id)) })))
+  }
 
   const lista = q.trim() ? results : tab === 'favoritos' ? d.favoritos.map((id) => byId.get(id)).filter(Boolean) as Alimento[] : tab === 'categorias' && cat ? pool.filter((a) => a.cat === cat) : []
 
   return (
     <div className="view">
       <PageHead back eyebrow={`Registrar · ${fmtShort(fecha)}`} title="Comida" right={<input type="date" aria-label="Fecha" value={fecha} max={today()} onChange={(e) => setFecha(e.target.value || today())} style={{ width: 150 }} />} />
-      <div style={{ marginBottom: 12 }}><Seg label="Momento" value={momento} onChange={setMomento} options={MOMENTOS} /></div>
+      <div className="row" style={{ marginBottom: 12, justifyContent: 'space-between' }}><Seg label="Momento" value={momento} onChange={setMomento} options={MOMENTOS} />
+        {ayerMomento.length > 0 && <button className="btn btn-quiet btn-sm" onClick={repetirAyer}><Icon name="repeat" size={15} />Repetir {MOMENTOS.find((m) => m[0] === momento)?.[1].toLowerCase()} de ayer</button>}</div>
       <div className="two-col">
         <div className="stack">
           <div className="search big"><Icon name="search" size={18} /><input aria-label="Buscar un alimento" placeholder="Buscá: palta, bife, milanesa, café con leche…" value={q} onChange={(e) => { setQ(e.target.value); setOpen(null) }} autoComplete="off" />{q && <button className="icon-btn sm clear" aria-label="Borrar búsqueda" onClick={() => setQ('')}><Icon name="x" size={15} /></button>}</div>
@@ -125,7 +136,8 @@ export default function Comida() {
             {dayMeals.length === 0 ? <p className="cap">Todavía nada.</p> : MOMENTOS.map(([k, n]) => {
               const ms = dayMeals.filter((m) => (m.momento ?? 'snack') === k)
               if (!ms.length) return null
-              return <div key={k} style={{ marginBottom: 8 }}><div className="eyebrow" style={{ margin: '6px 0 2px' }}>{n} · {Math.round(ms.reduce((a, m) => a + m.kcal, 0))} kcal</div>
+              const pr = ms.reduce((a, m) => a + m.prot, 0)
+              return <div key={k} style={{ marginBottom: 8 }}><div className="eyebrow mom-head" style={{ margin: '6px 0 2px' }}><span>{n} · {Math.round(ms.reduce((a, m) => a + m.kcal, 0))} kcal</span>{k !== 'snack' && <span className={`prot-chip ${pr >= metaComida ? 'ok' : ''}`} title={`Proteína de esta comida (objetivo ≥ ${metaComida} g)`}>{pr >= metaComida ? `≥${metaComida} g P` : `${Math.round(pr)}/${metaComida} g P`}</span>}</div>
                 {ms.map((m) => <div className="list-row" key={m.id}><span className="grow">{m.nombre}{m.gramos ? <span className="cap"> · {dec(m.gramos)} g</span> : null}</span><span className="k">{m.kcal} kcal · {dec(m.prot)} g</span><button className="icon-btn sm" aria-label={`Borrar ${m.nombre}`} onClick={() => delMeal(m.id)}><Icon name="trash" size={15} /></button></div>)}</div>
             })}
           </Card>

@@ -7,6 +7,7 @@ import { Bar } from './components/ui'
 import { AyudaSheet, CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './components/Sheets'
 import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
+import { CierreSheet } from './components/Tareas'
 import { syncCorreo } from './lib/correo'
 import { iniciarSync, sincronizar } from './lib/sync'
 import { iniciarSalud } from './lib/salud'
@@ -58,6 +59,8 @@ export default function App() {
   useEffect(() => {
     if (!ready) return
     const run = () => { const patch = processRules(useStore.getState()); if (patch) useStore.getState().set(() => patch) }
+    // Pedir almacenamiento persistente: iOS lo concede a las apps de la pantalla de inicio y evita que borre datos.
+    try { void navigator.storage?.persist?.() } catch { /* sin soporte */ }
     // Primero se traen los datos de los otros dispositivos; recién después se evalúan las reglas del día.
     // Al marcar hábitos se revisa enseguida si algún castigo quedó anulado por volver.
     let rt: number | undefined
@@ -173,6 +176,7 @@ function Shell() {
       {ui.sheet === 'castigo' && <CastigoSheet />}
       {ui.sheet === 'habito' && <HabitSheet />}
       {ui.sheet === 'ayuda' && <AyudaSheet />}
+      {ui.sheet === 'cierre' && <CierreSheet />}
       {ui.palette && <Palette />}
       {ui.toast && (
         <div className="toast" role="status" key={ui.toast.id}>
@@ -193,7 +197,7 @@ function Palette() {
   const cmds: [string, string, () => void][] = [
     ['sparkles', 'Hablar con el coach', () => ui.go('coach')],
     ['utensils', 'Registrar comida', () => ui.go('comida')], ['plus', 'Registrar…', () => ui.openSheet('registrar')],
-    ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')],
+    ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')], ['sunset', 'Cerrar el día', () => ui.openSheet('cierre')],
     ['dumbbell', 'Registrar entrenamiento', () => ui.go('fisico', 'entreno')], ['receipt', 'Registrar gasto o ingreso', () => ui.go('finanzas', 'movimientos')],
     ['file-text', 'Subir un comprobante', () => ui.go('finanzas', 'comprobante')],
     ['feather', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['wind', 'Respirar unos minutos', () => ui.go('cuerpo', 'respirar')], ['stretch', 'Estirar', () => ui.go('cuerpo', 'estirar')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],

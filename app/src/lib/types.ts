@@ -36,6 +36,8 @@ export type HabitState = 'hecho' | 'minimo' | 'no' | 'reserva'
 /** Período en el que ciertas áreas no cuentan (partido, parciales, lesión, enfermedad, semana pesada, viaje). */
 export type TipoEstado = 'partido' | 'parciales' | 'lesion' | 'enfermo' | 'semana pesada' | 'viaje'
 export interface EstadoPlan { id: string; tipo: TipoEstado; desde: string; hasta: string; areas: AreaId[]; nota?: string }
+/** Tarea puntual (no hábito). Sin fecha = "algún día". */
+export interface Tarea { id: string; texto: string; fecha?: string; hecha?: string; creada: string; pospuesta?: number; minutos?: number; dificil?: boolean; primerPaso?: string }
 /** Lo que se cruzó cuando un hábito no salió: para aprender, no es una excusa. */
 export interface Aprendizaje { id: string; fecha: string; habitId: string; que: string; distinto?: string }
 
