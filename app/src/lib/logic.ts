@@ -479,7 +479,7 @@ export const recomendaciones = (d: Data): Note[] => {
   const intensidad = agendaHoy.find((a) => a.intensidad)?.intensidad
 
   if (hs !== null && hs < d.profile.suenoMin)
-    out.push({ icon: 'bed', text: `Dormiste ${hs.toFixed(1)} h. ${intensidad === 'roja' ? 'Hoy es intensidad roja: priorizá una siesta de 20–30 min, hidratación y carbohidratos antes del entrenamiento.' : 'Siesta de 20–30 min (no más) y acostate temprano.'}` })
+    out.push({ icon: 'bed', text: `Dormiste ${hs.toFixed(1).replace('.', ',')} h. ${intensidad === 'roja' ? 'Hoy es intensidad roja: priorizá una siesta de 20–30 min, hidratación y carbohidratos antes del entrenamiento.' : 'Siesta de 20–30 min (no más) y acostate temprano.'}` })
   const manana = addDays(t, 1)
   const wake = d.profile.despertar[dow(manana)]
   out.push({ icon: 'moon', text: `Mañana te levantás a las ${wake}: para dormir ${String(d.profile.suenoMin).replace('.', ',')} h acostate antes de las ${bedtimeFor(wake, d.profile.suenoMin)}. Celular fuera de la cama 30 min antes.` })

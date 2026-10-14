@@ -4,6 +4,7 @@ import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, dow, fmtShort, today, uid, weekStart } from '../lib/date'
 import { agendaDe, cuerpoXp, habitsFor } from '../lib/logic'
+import { listoParaHoy } from '../lib/rendimiento'
 import { CARDIO, duracionRutina, FASE_LABEL, RESPIRACIONES, RUTINAS, type Fase, type Respiracion, type Rutina } from '../lib/cuerpo'
 import { decir, GUIA_DEF, mantenerPantalla, renderRespiracion, sonar, vibracionDisponible, vibrar } from '../lib/guia'
 import type { SesionCuerpo, TipoCuerpo } from '../lib/types'
@@ -21,13 +22,16 @@ const useGuardar = () => {
     const f = today()
     const ses: SesionCuerpo = { id: uid(), fecha: f, ...s }
     const mov = s.tipo === 'estiramiento' ? habitsFor(d.habits, f).find((h) => /movilidad|elongaci|estir/i.test(h.nombre) && !d.habitLog[f]?.[h.id]) : undefined
+    // En un día en rojo, recuperar es el entrenamiento: cuenta como versión mínima.
+    const rojo = listoParaHoy(d, f).banda === 'rojo'
+    const ent = rojo ? habitsFor(d.habits, f).find((h) => /entren/i.test(h.nombre) && !d.habitLog[f]?.[h.id]) : undefined
     d.set((st) => ({
       cuerpo: [...st.cuerpo, ses],
-      ...(mov ? { habitLog: { ...st.habitLog, [f]: { ...(st.habitLog[f] ?? {}), [mov.id]: 'hecho' as const } } } : {}),
+      ...(mov || ent ? { habitLog: { ...st.habitLog, [f]: { ...(st.habitLog[f] ?? {}), ...(mov ? { [mov.id]: 'hecho' as const } : {}), ...(ent ? { [ent.id]: 'minimo' as const } : {}) } } } : {}),
     }))
-    ui.notify(`${s.nombre} · ${s.minutos} min · +${cuerpoXp(ses)} XP${mov ? ` · "${mov.nombre}" hecho` : ''}`, () => useStore.getState().set((st) => ({
+    ui.notify(`${s.nombre} · ${s.minutos} min · +${cuerpoXp(ses)} XP${mov ? ` · "${mov.nombre}" hecho` : ''}${ent ? ' · día en rojo: cuenta como entrenamiento mínimo' : ''}`, () => useStore.getState().set((st) => ({
       cuerpo: st.cuerpo.filter((x) => x.id !== ses.id),
-      ...(mov ? { habitLog: { ...st.habitLog, [f]: Object.fromEntries(Object.entries(st.habitLog[f] ?? {}).filter(([k]) => k !== mov.id)) } } : {}),
+      ...(mov || ent ? { habitLog: { ...st.habitLog, [f]: Object.fromEntries(Object.entries(st.habitLog[f] ?? {}).filter(([k]) => k !== mov?.id && k !== ent?.id)) } } : {}),
     })))
   }
 }

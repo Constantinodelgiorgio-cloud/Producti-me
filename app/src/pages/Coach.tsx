@@ -8,6 +8,7 @@ import { aplicarAcciones, describir, revertirCambio, validarAccion } from '../li
 import { resolverPropuesta, runTurn, userMessage, type ToolHost } from '../lib/coach'
 import { ALIMENTOS, resolver } from '../lib/foods'
 import type { Accion, Chat, ChatMsg, CuentaId, HabitState, MomentoComida, SocialLog } from '../lib/types'
+import { hayRiesgo } from '../lib/seguridad'
 import { Icon } from '../components/Icon'
 import { Empty } from '../components/ui'
 
@@ -136,6 +137,8 @@ export default function Coach() {
       api = resolverPropuesta(api, pend.propuesta.toolUseId, 'Constantino no la aplicó y escribió otro mensaje: tomala como descartada salvo que la vuelva a pedir.')
       c = { ...c, msgs: c.msgs.map((m) => (m.id === pend.id ? { ...m, propuesta: { ...m.propuesta!, estado: 'descartada' } } : m)) }
     }
+    // Frases de riesgo: primero las líneas de ayuda (sin depender de la IA).
+    if (hayRiesgo(texto)) ui.openSheet('ayuda')
     api = userMessage(useStore.getState(), texto.trim(), api)
     c = { ...c, api, msgs: [...c.msgs, { id: uid(), rol: 'user', texto: texto.trim() }] }
     saveChat(c)

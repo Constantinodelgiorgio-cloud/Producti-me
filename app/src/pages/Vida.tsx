@@ -5,6 +5,7 @@ import { useUI } from '../lib/ui'
 import { addDays, diffDays, fmtShort, today, uid, weekStart } from '../lib/date'
 import { EMOCIONES, PREGUNTAS_DIARIO } from '../lib/seed'
 import type { Idea, JournalEntry, ModoDiario, SocialLog } from '../lib/types'
+import { hayRiesgo } from '../lib/seguridad'
 import { Icon } from '../components/Icon'
 import { Bar, Card, Empty, Field, PageHead, Seg } from '../components/ui'
 import { BarC, LineC, PieC } from '../components/charts'
@@ -171,6 +172,7 @@ function Writer({ initial, onClose }: { initial: Draft; onClose: () => void }) {
     const e: JournalEntry = { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()).map((x) => `${x.p}\n${x.r.trim()}`).join('\n\n') : dr.texto.trim(), modo: dr.modo, preguntas: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()) : undefined, animo: dr.animo, emocion: dr.emo }
     d.set((s) => ({ journal: [...s.journal, e] }))
     try { localStorage.removeItem(BORRADOR) } catch { /* sin almacenamiento */ }
+    if (hayRiesgo(e.texto)) { onClose(); ui.openSheet('ayuda'); return }
     ui.notify(`Entrada guardada · +${dr.modo === 'libre' ? 10 : 15} XP`, () => d.set((s) => ({ journal: s.journal.filter((x) => x.id !== id) })))
     onClose()
   }
@@ -274,6 +276,7 @@ function Ideas() {
 }
 
 function Apoyo() {
+  const ui = useUI()
   return (
     <div className="grid">
       <Card title="Hablar con un profesional" icon="heart-pulse">
@@ -286,12 +289,13 @@ function Apoyo() {
         </ol>
       </Card>
       <Card title="Si en algún momento te sentís muy mal" icon="alert">
-        <p className="body-2">Si aparecen pensamientos de hacerte daño o sentís que no podés más, no lo cargues solo. Hablá ya con alguien de confianza y llamá a la <b style={{ color: 'var(--t1)' }}>Línea 135</b> (gratuita, CABA y GBA) o al <b style={{ color: 'var(--t1)' }}>(011) 5275-1135</b> desde todo el país, o acercate a una guardia. En emergencias: <b style={{ color: 'var(--t1)' }}>107</b> o <b style={{ color: 'var(--t1)' }}>911</b>.</p>
+        <p className="body-2" style={{ marginBottom: 12 }}>Si aparecen pensamientos de hacerte daño o sentís que no podés más, no lo cargues solo. Hablá ya con alguien de confianza y llamá a la <b style={{ color: 'var(--t1)' }}>línea nacional de salud mental 0800-999-0091</b> (gratuita, 24 h, desde Corrientes también) o acercate a una guardia. En emergencias: <b style={{ color: 'var(--t1)' }}>911</b> o <b style={{ color: 'var(--t1)' }}>107</b>.</p>
+        <button className="btn btn-quiet" onClick={() => ui.openSheet('ayuda')}><Icon name="phone" size={16} />Ver todas las líneas</button>
       </Card>
       <Card title="Para salir del bucle" icon="compass">
         <ul className="body-2" style={{ paddingLeft: 18, margin: 0, lineHeight: 1.7 }}>
           <li>Una cosa nueva por semana: lugar, comida, actividad o persona. Está como hábito los viernes y domingos.</li>
-          <li>Cuando aparezca el enojo porque algo no sale, escribí tres líneas en el diario antes de reaccionar.</li>
+          <li>Cuando aparezca el enojo: primero bajar la temperatura (90 s de respiración), después ponerle nombre y mirarlo desde afuera. Descargarse no lo baja. Está en Diario → Enojo.</li>
           <li>Mirá el progreso, no el día: el podio y los gráficos existen para eso.</li>
         </ul>
       </Card>

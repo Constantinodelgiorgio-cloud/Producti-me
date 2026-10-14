@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 // Estado de interfaz (no se guarda): ruta, hojas, avisos y confirmaciones.
 export type Route = 'hoy' | 'habitos' | 'comida' | 'fisico' | 'estudio' | 'finanzas' | 'vida' | 'revision' | 'ajustes' | 'coach' | 'areas' | 'cuerpo'
-export type SheetKind = 'registrar' | 'mas' | 'checkin-manana' | 'checkin-noche' | 'confirm' | 'castigo' | 'habito' | null
+export type SheetKind = 'registrar' | 'mas' | 'checkin-manana' | 'checkin-noche' | 'confirm' | 'castigo' | 'habito' | 'ayuda' | 'cierre' | null
 
 /** Sección visual de cada pantalla: define el tono ambiental (ver styles.css, [data-section]). */
 export const SECTION: Record<Route, string> = {

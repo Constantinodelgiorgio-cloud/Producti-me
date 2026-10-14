@@ -47,6 +47,13 @@ export interface CheckIn {
   calidadSueno?: number
   energia?: number
   animoManana?: number
+  /** dolor muscular y fatiga (1 = nada, 5 = mucho), núcleo de los cuestionarios de bienestar en rugby */
+  dolor?: number
+  fatiga?: number
+  /** corrección manual del "listo para hoy" */
+  ajuste?: 'mejor' | 'peor'
+  /** cierre del día hecho */
+  cerrado?: boolean
   prioridad?: string
   // noche
   animoNoche?: number

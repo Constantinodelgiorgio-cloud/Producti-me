@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { bestE1rm, dayNutrition, e1rm } from '../lib/logic'
@@ -6,6 +6,8 @@ import { addDays, fmtShort, today, uid, weekStart } from '../lib/date'
 import type { Exercise, Intensity, Photo, Workout } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Bar, Card, Empty, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
+import { CargaCard, ListoCard } from '../components/Listo'
+import { mantenerPantalla, sonar, vibrar } from '../lib/guia'
 import { BarC, LineC, PieC } from '../components/charts'
 
 type Tab = 'entreno' | 'nutricion' | 'cuerpo'
@@ -39,6 +41,27 @@ function Entreno() {
     const ww = d.workouts.filter((x) => weekStart(x.fecha) === ws)
     return { semana: ws.slice(5).replace('-', '/'), min: ww.reduce((a, x) => a + x.minutos, 0), rpe: ww.length ? +(ww.reduce((a, x) => a + x.rpe, 0) / ww.length).toFixed(1) : null }
   })
+  // "La última vez" de este ejercicio y una sugerencia de progresión según el esfuerzo de esa sesión.
+  const ultima = (() => {
+    const n = ex.nombre.trim().toLowerCase()
+    if (!n) return null
+    const ws = d.workouts.filter((x) => x.ejercicios.some((e) => e.nombre.toLowerCase() === n)).sort((a, b) => b.fecha.localeCompare(a.fecha))
+    const x = ws[0]
+    if (!x) return null
+    const e = x.ejercicios.filter((y) => y.nombre.toLowerCase() === n).sort((a, b) => e1rm(b.kg, b.reps) - e1rm(a.kg, a.reps))[0]
+    const inferior = /sentadilla|peso muerto|prensa|hip thrust|zancada/i.test(n)
+    const sugerencia = x.rpe <= 7 && e.kg > 0 ? `esa sesión fue esfuerzo ${x.rpe}: probá ${String(e.kg + (inferior ? 5 : 2.5)).replace('.', ',')} kg` : x.rpe >= 9 ? `esa sesión fue esfuerzo ${x.rpe}: repetí el peso` : ''
+    return { fecha: x.fecha, e, sugerencia }
+  })()
+  const sumarEjercicio = () => {
+    if (!ex.nombre.trim()) return
+    const nombre = ex.nombre.trim()
+    const antes = Math.max(bestE1rm(d, nombre), ...w.ejercicios.filter((y) => y.nombre.toLowerCase() === nombre.toLowerCase()).map((y) => e1rm(y.kg, y.reps)))
+    const ahora = e1rm(ex.kg, ex.reps)
+    setW({ ...w, ejercicios: [...w.ejercicios, { ...ex, nombre }] })
+    setEx({ ...ex, nombre: '' })
+    if (antes > 0 && ahora > antes && ex.kg > 0) ui.notify(`Récord en ${nombre}: 1RM estimado ${Math.round(ahora)} kg (antes ${Math.round(antes)})`)
+  }
   const save = () => {
     const id = w.id
     d.set((s) => ({ workouts: [...s.workouts, w] }))
@@ -58,14 +81,15 @@ function Entreno() {
               <Field label="Fecha" id="w-f"><input id="w-f" type="date" value={w.fecha} max={today()} onChange={(e) => setW({ ...w, fecha: e.target.value })} /></Field>
               <Field label="Tipo" id="w-t"><select id="w-t" value={w.tipo} onChange={(e) => setW({ ...w, tipo: e.target.value as Workout['tipo'] })}>{TIPOS.map((x) => <option key={x}>{x}</option>)}</select></Field>
               <Field label="Intensidad" id="w-i"><select id="w-i" value={w.intensidad} onChange={(e) => setW({ ...w, intensidad: e.target.value as Intensity })}>{INTS.map((x) => <option key={x}>{x}</option>)}</select></Field>
-              <Field label="Minutos" id="w-m"><input id="w-m" type="number" inputMode="numeric" value={w.minutos} onChange={(e) => setW({ ...w, minutos: Number(e.target.value) })} /></Field>
-              <Field label="Esfuerzo (RPE 1–10)" id="w-r"><input id="w-r" type="number" inputMode="numeric" min={1} max={10} value={w.rpe} onChange={(e) => setW({ ...w, rpe: Number(e.target.value) })} /></Field>
+              <Field label="Minutos" id="w-m"><NumInput id="w-m" decimals={false} value={w.minutos} onValue={(n) => setW({ ...w, minutos: n ?? 0 })} /></Field>
+              <Field label="Esfuerzo (RPE 1–10)" id="w-r"><NumInput id="w-r" decimals={false} value={w.rpe} onValue={(n) => setW({ ...w, rpe: Math.max(0, Math.min(10, n ?? 0)) })} /></Field>
             </div>
             <div className="eyebrow">Ejercicios</div>
             {w.ejercicios.map((e, i) => (
               <div className="list-row" key={i}>{e.nombre}<span className="k">{e.series}×{e.reps} · {e.kg} kg</span><button className="icon-btn sm" aria-label={`Quitar ${e.nombre}`} onClick={() => setW({ ...w, ejercicios: w.ejercicios.filter((_, j) => j !== i) })}><Icon name="x" size={15} /></button></div>
             ))}
-            <form className="form-grid" onSubmit={(e) => { e.preventDefault(); if (!ex.nombre.trim()) return; setW({ ...w, ejercicios: [...w.ejercicios, { ...ex, nombre: ex.nombre.trim() }] }); setEx({ ...ex, nombre: '' }) }}>
+            {ultima && <div className="ultima"><Icon name="history" size={14} /><span className="grow">La última vez ({fmtShort(ultima.fecha)}): <b>{ultima.e.series}×{ultima.e.reps} · {String(ultima.e.kg).replace('.', ',')} kg</b>{ultima.sugerencia ? ` · ${ultima.sugerencia}` : ''}</span><button className="chip" onClick={() => setEx({ ...ex, series: ultima.e.series, reps: ultima.e.reps, kg: ultima.e.kg })}>Repetir</button></div>}
+            <form className="form-grid" onSubmit={(e) => { e.preventDefault(); sumarEjercicio() }}>
               <Field label="Ejercicio" id="e-n"><input id="e-n" list="ejs" value={ex.nombre} onChange={(e) => setEx({ ...ex, nombre: e.target.value })} /></Field>
               <datalist id="ejs">{nombres.map((n) => <option key={n} value={n} />)}</datalist>
               <Field label="Series" id="e-s"><input id="e-s" type="number" inputMode="numeric" value={ex.series} onChange={(e) => setEx({ ...ex, series: Number(e.target.value) })} /></Field>
@@ -89,6 +113,10 @@ function Entreno() {
         </Card>
       </div>
       <aside className="stack">
+        <ListoCard />
+        <CargaCard />
+        <Descanso />
+        <Discos />
         <Card title="Recuperación de marcas" icon="trending-up">
           <div className="stack" style={{ gap: 14 }}>
             {d.profile.marcasPrevias.map((m) => {
@@ -216,5 +244,57 @@ function Cuerpo() {
         </Card>
       </aside>
     </div>
+  )
+}
+
+/** Timer de descanso entre series: suena y vibra al terminar; la pantalla queda encendida. */
+function Descanso() {
+  const [fin, setFin] = useState<number | null>(null)
+  const [, tick] = useState(0)
+  const [ultimo, setUltimo] = useState(90)
+  useEffect(() => {
+    if (!fin) return
+    const id = window.setInterval(() => {
+      tick((x) => x + 1)
+      if (Date.now() >= fin) { sonar('fin'); vibrar('cambio'); setFin(null); void mantenerPantalla(false) }
+    }, 250)
+    return () => window.clearInterval(id)
+  }, [fin])
+  const left = fin ? Math.max(0, Math.ceil((fin - Date.now()) / 1000)) : 0
+  const go = (s: number) => { sonar('aviso', 0.0001); setUltimo(s); setFin(Date.now() + s * 1000); void mantenerPantalla(true) }
+  return (
+    <section className="panel pad">
+      <h2 className="h2"><Icon name="timer-reset" size={16} />Descanso entre series</h2>
+      {fin ? (
+        <div className="descanso">
+          <span className="val-xl num">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>
+          <div className="row"><button className="btn btn-quiet btn-sm" onClick={() => setFin(fin + 15000)}>+15 s</button><button className="btn btn-ghost btn-sm" onClick={() => { setFin(null); void mantenerPantalla(false) }}>Cortar</button></div>
+        </div>
+      ) : (
+        <div className="chips" style={{ flexWrap: 'wrap' }}>{[60, 90, 120, 180, 240].map((x) => <button key={x} className="chip" aria-pressed={x === ultimo} onClick={() => go(x)}>{x < 120 ? `${x} s` : `${x / 60} min`}</button>)}</div>
+      )}
+      <p className="cap" style={{ marginTop: 10 }}>Fuerza pesada: 2–4 min. Accesorios: 60–90 s. Suena al terminar.</p>
+    </section>
+  )
+}
+
+/** Calculadora de discos por lado (barra olímpica de 20 kg). */
+function Discos() {
+  const [kg, setKg] = useState<number | undefined>(100)
+  const [barra, setBarra] = useState(20)
+  const DISCOS = [25, 20, 15, 10, 5, 2.5, 1.25]
+  let lado = Math.max(0, ((kg ?? 0) - barra) / 2)
+  const usados: number[] = []
+  for (const p of DISCOS) while (lado >= p - 1e-9) { usados.push(p); lado -= p }
+  return (
+    <section className="panel pad">
+      <h2 className="h2"><Icon name="layers" size={16} />Discos por lado</h2>
+      <div className="form-grid">
+        <Field label="Peso total (kg)" id="dc-kg"><NumInput id="dc-kg" value={kg} onValue={(n) => setKg(n)} /></Field>
+        <Field label="Barra" id="dc-b"><select id="dc-b" value={barra} onChange={(e) => setBarra(Number(e.target.value))}><option value={20}>20 kg (olímpica)</option><option value={15}>15 kg</option><option value={10}>10 kg</option></select></Field>
+      </div>
+      <div className="discos" aria-label="Discos por lado">{usados.length ? usados.map((p, i) => <span key={i} className={`disco d${String(p).replace('.', '_')}`}>{String(p).replace('.', ',')}</span>) : <span className="cap">Solo la barra</span>}</div>
+      {lado > 0.01 && <p className="cap">Faltan {String(Math.round(lado * 200) / 100).replace('.', ',')} kg por lado que no se arman con discos comunes.</p>}
+    </section>
   )
 }

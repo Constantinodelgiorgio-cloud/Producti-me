@@ -13,6 +13,8 @@ import { CheckBox, HabitRow } from '../components/HabitRow'
 import { HabitTile } from '../components/HabitTile'
 import { CastigoBand } from '../components/Castigos'
 import { VueltaYEstado } from '../components/Estados'
+import { ListoCard } from '../components/Listo'
+import { notasSueno } from '../lib/rendimiento'
 
 const greet = () => { const h = new Date().getHours(); return h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches' }
 const stamp = () => {
@@ -140,6 +142,8 @@ function Ahora() {
 
         <VueltaYEstado />
 
+        <ListoCard compacto />
+
         <CastigoBand />
 
         <ParaCompletar />
@@ -159,7 +163,7 @@ function Ahora() {
         <Signals />
         {avs.length > 0 && <><div className="sec"><span className="eyebrow">Requiere atención</span></div><Attention items={avs} /></>}
         {/* Nivel 3 · contexto */}
-        <Card title="Recomendaciones" icon="lightbulb"><Notes items={recomendaciones(d).slice(0, 4)} /></Card>
+        <Card title="Recomendaciones" icon="lightbulb"><Notes items={[...notasSueno(d), ...recomendaciones(d)].slice(0, 5)} /></Card>
         {recuerdos(d).length > 0 && <Card title="Recuerdos" icon="clock"><Notes items={recuerdos(d)} /></Card>}
       </aside>
     </div>

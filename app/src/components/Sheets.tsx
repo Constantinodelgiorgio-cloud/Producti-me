@@ -5,6 +5,7 @@ import { dow, today, uid } from '../lib/date'
 import { bedtimeFor, sleepHours } from '../lib/logic'
 import type { CheckIn, Pinned } from '../lib/types'
 import { Icon } from './Icon'
+import { LINEAS } from '../lib/seguridad'
 import { Field, Scale, VoiceText } from './ui'
 
 /** Hoja inferior (diálogo centrado en escritorio): arrastrar para cerrar, Esc, foco atrapado. */
@@ -124,7 +125,7 @@ export const CheckinSheet = ({ kind }: { kind: 'manana' | 'noche' }) => {
   }
   return (
     <Sheet label={kind === 'manana' ? 'Check-in de la mañana' : 'Check-in de la noche'}>
-      <div className="sheet-head"><h2>{kind === 'manana' ? 'Check-in de la mañana' : 'Check-in de la noche'}</h2><span className="cap">{kind === 'manana' ? '≈ 20 s' : '≈ 1 min'}</span></div>
+      <div className="sheet-head"><h2>{kind === 'manana' ? 'Check-in de la mañana' : 'Check-in de la noche'}</h2><span className="cap">{kind === 'manana' ? '≈ 30 s' : '≈ 1 min'}</span></div>
       <div className="stack" style={{ gap: 16 }}>
         {kind === 'manana' ? <>
           <div className="form-grid">
@@ -134,6 +135,8 @@ export const CheckinSheet = ({ kind }: { kind: 'manana' | 'noche' }) => {
           {hs !== null && <p className="cap" style={{ marginTop: -8 }}>{hs.toFixed(1).replace('.', ',')} h de sueño · {hs >= profile.suenoMin ? 'meta cumplida' : `${(profile.suenoMin - hs).toFixed(1).replace('.', ',')} h menos que tu meta`}</p>}
           <Scale id="ci-cal" max={5} label="Calidad del sueño" value={d.calidadSueno} onChange={(n) => up({ calidadSueno: n })} />
           <Scale id="ci-en" max={5} label="Energía" value={d.energia} onChange={(n) => up({ energia: n })} />
+          <Scale id="ci-do" max={5} label="Dolor muscular (1 = nada, 5 = mucho)" value={d.dolor} onChange={(n) => up({ dolor: n })} />
+          <Scale id="ci-fa" max={5} label="Fatiga (1 = nada, 5 = mucha)" value={d.fatiga} onChange={(n) => up({ fatiga: n })} />
           <Scale id="ci-am" label="Ánimo" value={d.animoManana} onChange={(n) => up({ animoManana: n })} />
           <VoiceText id="ci-prio" rows={1} label="Prioridad n.º 1 de hoy" lang={lang} value={d.prioridad ?? ''} onChange={(v) => up({ prioridad: v })} placeholder="Si hoy solo hacés una cosa, ¿cuál es?" />
         </> : <>
@@ -163,6 +166,28 @@ export const ConfirmSheet = () => {
       <div className="sheet-head"><h2>{req.title}</h2></div>
       {req.body && <p className="body-2" style={{ marginBottom: 20 }}>{req.body}</p>}
       <div className="row" style={{ flexWrap: 'nowrap' }}><button className="btn btn-quiet grow" onClick={() => done(false)}>Cancelar</button><button className={`btn grow ${req.danger ? 'btn-danger' : 'btn-primary'}`} onClick={() => done(true)}>{req.confirm}</button></div>
+    </Sheet>
+  )
+}
+
+/** Ayuda inmediata: líneas nacionales, sin juicio y sin coach. */
+export const AyudaSheet = () => {
+  const ui = useUI()
+  return (
+    <Sheet label="Ayuda ahora">
+      <div className="sheet-head"><h2>No estás solo</h2></div>
+      <p className="body-2" style={{ marginBottom: 16 }}>Si estás pensando en hacerte daño o sentís que no podés más, hablá ahora con alguien. Las líneas son gratuitas y atienden personas preparadas para escucharte. También podés escribirle ya a alguien de confianza o ir a la guardia más cercana.</p>
+      <div className="stack" style={{ gap: 10 }}>
+        {LINEAS.map((l) => (
+          <a key={l.tel} className="linea" href={`tel:${l.tel}`}>
+            <Icon name="phone" size={18} />
+            <span className="grow"><b>{l.nombre}</b><small>{l.detalle}</small></span>
+            <span className="num">{l.numero}</span>
+          </a>
+        ))}
+      </div>
+      <p className="cap" style={{ marginTop: 14 }}>Si un número no responde, llamá al 911. Producti-me no reemplaza a un profesional.</p>
+      <button className="btn btn-ghost" style={{ marginTop: 10, width: '100%' }} onClick={ui.closeSheet}>Cerrar</button>
     </Sheet>
   )
 }

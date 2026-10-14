@@ -4,7 +4,7 @@ import { castigosPendientes, levelInfo, processRules, sancionActiva, totalXp } f
 import { parseHash, ROUTE_INFO, SECTION, useUI, type Route } from './lib/ui'
 import { Icon } from './components/Icon'
 import { Bar } from './components/ui'
-import { CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './components/Sheets'
+import { AyudaSheet, CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './components/Sheets'
 import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
 import { syncCorreo } from './lib/correo'
@@ -172,6 +172,7 @@ function Shell() {
       {ui.sheet === 'confirm' && <ConfirmSheet />}
       {ui.sheet === 'castigo' && <CastigoSheet />}
       {ui.sheet === 'habito' && <HabitSheet />}
+      {ui.sheet === 'ayuda' && <AyudaSheet />}
       {ui.palette && <Palette />}
       {ui.toast && (
         <div className="toast" role="status" key={ui.toast.id}>
@@ -197,7 +198,7 @@ function Palette() {
     ['file-text', 'Subir un comprobante', () => ui.go('finanzas', 'comprobante')],
     ['feather', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['wind', 'Respirar unos minutos', () => ui.go('cuerpo', 'respirar')], ['stretch', 'Estirar', () => ui.go('cuerpo', 'estirar')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],
     ...SIDE.map(([k]) => [ROUTE_INFO[k][1], `Ir a ${ROUTE_INFO[k][0]}`, () => ui.go(k)] as [string, string, () => void]),
-    ['areas', 'Ir a Áreas', () => ui.go('areas')],
+    ['areas', 'Ir a Áreas', () => ui.go('areas')], ['phone', 'Ayuda ahora (líneas gratuitas)', () => ui.openSheet('ayuda')],
     ['calendar-check', 'Abrir la revisión semanal', () => ui.go('revision')], ['settings', 'Abrir ajustes', () => ui.go('ajustes')],
   ]
   const list = cmds.filter((c) => c[1].toLowerCase().includes(q.toLowerCase()))
