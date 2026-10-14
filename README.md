@@ -24,6 +24,7 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [12 · Correo de pagos](docs/12-correo-de-pagos.md) | Cómo conectar Gmail para que los pagos se anoten solos |
 | [13 · Evolución implementada](docs/13-evolucion-implementada.md) | Qué cambió, migración de datos, verificación y límites · **implementado** |
 | [14 · Sincronización y correo](docs/14-sincronizacion.md) | iPhone + iPad con los mismos datos, script de Google, día 1, Cuerpo · **implementado** |
+| [15 · Salud, widget y app nativa](docs/15-salud-widget-y-app-nativa.md) | Guía por sonido/vibración/voz, datos automáticos de Salud vía Atajos, widget con Scriptable, propuesta de app nativa |
 
 ## Próximo paso
 

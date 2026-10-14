@@ -3,7 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'
 import type {
   Alimento, Aporte, BodyEntry, CareLog, Cambio, Chat, CheckIn, ComidaGuardada, Exam, Habit, HabitState, Idea, JournalEntry, Meal, MoneyMove,
-  Pendiente, Penalty, Photo, PlanDia, Posicion, Profile, Review, Reward, Ruta, Sancion, SesionCuerpo, Settings, Snapshot, SocialLog, StudySession, Subject, Workout,
+  Pendiente, Penalty, Photo, PlanDia, Posicion, Profile, Review, Reward, Ruta, Salud, Sancion, SesionCuerpo, Settings, Snapshot, SocialLog, StudySession, Subject, Workout,
 } from './types'
 import { HABITS, PROFILE, RUTAS, SUBJECTS } from './seed'
 import { today } from './date'
@@ -59,6 +59,7 @@ export interface Data {
   // ---- v3 ----
   cuerpo: SesionCuerpo[]
   pasos: Record<string, number> // fecha → pasos
+  salud: Record<string, Salud> // fecha → datos automáticos de la app Salud
 }
 
 export const initialData = (): Data => ({
@@ -106,6 +107,7 @@ export const initialData = (): Data => ({
   rutas: RUTAS,
   cuerpo: [],
   pasos: {},
+  salud: {},
 })
 
 export const BACKUP_KEY = 'producti-me-respaldo-v1'

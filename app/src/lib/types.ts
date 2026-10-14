@@ -138,10 +138,14 @@ export interface Settings {
   coachLeeDiario?: boolean
   /** sincronizar los datos entre dispositivos usando el mismo script de Google */
   syncOn?: boolean
+  /** cómo guía Cuerpo sin mirar la pantalla */
+  guia?: { sonido: boolean; vibracion: boolean; voz: boolean }
 }
 
 // ---------- Cuerpo: recuperación y movimiento suave ----------
 export type TipoCuerpo = 'respiracion' | 'estiramiento' | 'cardio' | 'caminata'
+/** Datos que llegan solos desde la app Salud (Atajos de iOS → script de Google). */
+export interface Salud { pasos?: number; sueno?: number; fcReposo?: number; kcalActivas?: number; distanciaKm?: number; actualizado?: string }
 export interface SesionCuerpo { id: string; fecha: string; tipo: TipoCuerpo; nombre: string; minutos: number; nota?: string; fc?: number }
 
 // ---------- Plan por día (lo que el Coach o vos cambian para una fecha puntual) ----------

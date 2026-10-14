@@ -1,14 +1,16 @@
 /**
  * Producti-me · Conexión con Google (sincronización entre dispositivos + correo de pagos)
  *
- * Corre en TU cuenta de Google (Apps Script). Hace dos cosas, solo para quien tenga la URL y la clave:
+ * Corre en TU cuenta de Google (Apps Script). Solo responde a quien tenga la URL y la clave:
  *   1. Guarda una copia de los datos de la app en un archivo de tu Google Drive
  *      ("producti-me-datos.json"), para que el iPhone, el iPad y la PC vean lo mismo.
  *   2. Expone los correos de Mercado Pago, Santander y Visa de los últimos 30 días
  *      para que la app anote los pagos.
+ *   3. Recibe pasos, sueño y pulsaciones que manda Atajos de iOS desde la app Salud.
+ *   4. Sirve un resumen del día para el widget de la pantalla de inicio (Scriptable).
  * Nada pasa por servidores de terceros.
  *
- * Instalación: docs/14-sincronizacion.md (y docs/12-correo-de-pagos.md para el correo).
+ * Instalación: docs/14-sincronizacion.md · correo: docs/12 · Salud y widget: docs/15.
  */
 
 // 1) Cambiá esta clave por un texto largo y difícil de adivinar (y pegá el mismo en Producti-me → Ajustes).
@@ -25,6 +27,9 @@ function doGet(e) {
   if (p.token !== CLAVE) return json({ error: 'unauthorized' });
   if (p.accion === 'rev') return json(cabecera());
   if (p.accion === 'leer') return json(leer());
+  if (p.accion === 'salud') return json({ salud: saludDesde(p.desde || '') });
+  if (p.accion === 'anotar') return json(anotarSalud(p));
+  if (p.accion === 'widget') return json(widget());
   return json({ mensajes: correos(Number(p.desde || 0)) });
 }
 
@@ -32,6 +37,11 @@ function doPost(e) {
   let b;
   try { b = JSON.parse(e.postData.contents); } catch (x) { return json({ error: 'bad_request' }); }
   if (b.token !== CLAVE) return json({ error: 'unauthorized' });
+  if (b.accion === 'anotar') return json(anotarSalud(b));
+  if (b.accion === 'resumen') {
+    PropertiesService.getScriptProperties().setProperty('resumen', JSON.stringify(b.resumen || {}));
+    return json({ ok: true });
+  }
   if (b.accion !== 'guardar') return json({ error: 'accion' });
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -85,6 +95,55 @@ function correos(desde) {
     });
   });
   return mensajes;
+}
+
+// ---------- Salud (desde Atajos de iOS) ----------
+// Acepta "8.234", "8234", "7,5" o "7.5" (Atajos escribe los números con el formato del teléfono).
+function numero(v) {
+  if (v === undefined || v === null || v === '') return undefined;
+  var t = String(v).trim().replace(/\s/g, '');
+  if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  var n = Number(t);
+  return isFinite(n) ? n : undefined;
+}
+
+function leerSalud() {
+  return JSON.parse(PropertiesService.getScriptProperties().getProperty('salud') || '{}');
+}
+
+function anotarSalud(p) {
+  var fecha = /^\d{4}-\d{2}-\d{2}$/.test(p.fecha || '') ? p.fecha : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var campos = { pasos: numero(p.pasos), sueno: numero(p.sueno), fcReposo: numero(p.fc), kcalActivas: numero(p.kcal), distanciaKm: numero(p.km) };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var salud = leerSalud();
+    var dia = salud[fecha] || {};
+    Object.keys(campos).forEach(function (k) { if (campos[k] !== undefined) dia[k] = Math.round(campos[k] * 100) / 100; });
+    dia.actualizado = new Date().toISOString();
+    salud[fecha] = dia;
+    // Se guardan los últimos 100 días (límite de tamaño de las propiedades del script).
+    Object.keys(salud).sort().slice(0, -100).forEach(function (f) { delete salud[f]; });
+    PropertiesService.getScriptProperties().setProperty('salud', JSON.stringify(salud));
+    return { ok: true, fecha: fecha, dia: dia };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function saludDesde(desde) {
+  var salud = leerSalud();
+  var out = {};
+  Object.keys(salud).forEach(function (f) { if (f >= desde) out[f] = salud[f]; });
+  return out;
+}
+
+// ---------- Widget ----------
+function widget() {
+  var r = JSON.parse(PropertiesService.getScriptProperties().getProperty('resumen') || '{}');
+  var hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return { resumen: r, salud: leerSalud()[hoy] || {}, hoy: hoy };
 }
 
 function json(o) {

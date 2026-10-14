@@ -831,3 +831,15 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 
 /* Botón principal de un formulario en grilla: ocupa todo el ancho, abajo. */
 .form-grid > .btn, .form-grid > button { grid-column: 1 / -1; min-height: 46px; margin-top: 4px; }
+
+/* Guía sin mirar la pantalla */
+.guia { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.guia .chips { justify-content: center; flex-wrap: wrap; }
+.guia .chip { display: inline-flex; align-items: center; gap: 6px; }
+.guia .cap { max-width: 44ch; }
+
+.auto-note { display: flex; align-items: center; gap: 8px; }
+.sync-dot.on { background: var(--success); box-shadow: 0 0 10px rgba(95,191,146,.6); }
+.ch-salud { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); padding-top: 14px; }
+.ch-salud .eyebrow { width: 100%; }
+.ch-salud span:not(.eyebrow) { display: inline-flex; align-items: center; gap: 6px; color: var(--t2); }

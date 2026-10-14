@@ -9,6 +9,7 @@ import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
 import { syncCorreo } from './lib/correo'
 import { iniciarSync, sincronizar } from './lib/sync'
+import { iniciarSalud } from './lib/salud'
 import Hoy from './pages/Hoy'
 import Habitos from './pages/Habitos'
 
@@ -59,6 +60,7 @@ export default function App() {
     const run = () => { const patch = processRules(useStore.getState()); if (patch) useStore.getState().set(() => patch) }
     // Primero se traen los datos de los otros dispositivos; recién después se evalúan las reglas del día.
     const stop = iniciarSync()
+    const stopSalud = iniciarSalud()
     void sincronizar().finally(run)
     // Correo de pagos: al abrir la app y cada 10 minutos mientras está abierta.
     const mail = () => { if (useStore.getState().settings.correoUrl) syncCorreo().catch(() => { /* el error queda en correo.error */ }) }
@@ -66,7 +68,7 @@ export default function App() {
     const id = window.setInterval(() => { run(); mail() }, 10 * 60 * 1000)
     const vis = () => { if (document.visibilityState === 'visible') { run(); mail() } }
     document.addEventListener('visibilitychange', vis)
-    return () => { stop(); window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
+    return () => { stop(); stopSalud(); window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
   }, [ready])
   return ready ? <Shell /> : <Splash />
 }

@@ -220,9 +220,9 @@ function Signals() {
   const f = today()
   const days = Array.from({ length: 7 }, (_, i) => addDays(f, i - 6))
   const letters = days.map((x) => 'DLMXJVS'[parse(x).getDay()])
-  const sleep = (x: string) => sleepHours(d.checkins[x]?.horaDormir, d.checkins[x]?.horaDespertar) ?? 0
+  const sleep = (x: string) => sleepHours(d.checkins[x]?.horaDormir, d.checkins[x]?.horaDespertar) ?? d.salud?.[x]?.sueno ?? 0
   const savingAt = (x: string) => last(d.savings.filter((s) => s.fecha <= x))?.valor ?? 0
-  const hs = sleepHours(d.checkins[f]?.horaDormir, d.checkins[f]?.horaDespertar)
+  const hs = sleepHours(d.checkins[f]?.horaDormir, d.checkins[f]?.horaDespertar) ?? d.salud?.[f]?.sueno ?? null
   const prev = days.slice(0, 6).map(sleep).filter(Boolean)
   const avgPrev = prev.length ? prev.reduce((a, b) => a + b, 0) / prev.length : null
   const prot = dayNutrition(d, f).prot
