@@ -23,6 +23,7 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [11 · Evolución premium](docs/11-evolucion-premium-propuesta.md) | Relectura, propuesta y tus respuestas (B.9) |
 | [12 · Correo de pagos](docs/12-correo-de-pagos.md) | Cómo conectar Gmail para que los pagos se anoten solos |
 | [13 · Evolución implementada](docs/13-evolucion-implementada.md) | Qué cambió, migración de datos, verificación y límites · **implementado** |
+| [14 · Sincronización y correo](docs/14-sincronizacion.md) | iPhone + iPad con los mismos datos, script de Google, día 1, Cuerpo · **implementado** |
 
 ## Próximo paso
 

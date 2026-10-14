@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'icon-maskable-512.png'],
+      includeAssets: ['horizonte.svg', 'horizonte-180.png', 'horizonte-192.png', 'horizonte-512.png', 'horizonte-maskable-512.png'],
       manifest: {
         name: 'Producti-Me',
         short_name: 'Producti-Me',
@@ -22,9 +22,9 @@ export default defineConfig(({ mode }) => ({
         start_url: './',
         scope: './',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'horizonte-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'horizonte-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'horizonte-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),

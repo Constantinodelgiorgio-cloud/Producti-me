@@ -3,8 +3,8 @@ import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, dow, parse, today, weekStart } from '../lib/date'
 import {
-  agendaAhora, agendaDe, avisos, bedtimeFor, compliance, dayNutrition, excusaDe, habitScore, habitsFor, hourFmt, last, levelInfo, MOMENTOS,
-  momentoDe, nowMin, recomendaciones, recuerdos, sancionActiva, sleepHours, toMin, totalXp, weekMedals,
+  agendaAhora, avisos, bedtimeFor, compliance, dayNutrition, excusaDe, habitScore, habitsFor, hourFmt, last, levelInfo, MOMENTOS,
+  momentoDe, nowMin, planDelDia, recomendaciones, recuerdos, sancionActiva, sleepHours, toMin, totalXp, weekMedals,
 } from '../lib/logic'
 import type { Habit } from '../lib/types'
 import { Icon } from '../components/Icon'
@@ -42,7 +42,7 @@ export default function Hoy() {
   const v = d.settings.hoyView
   const view = v === 'agenda' || v === 'linea' ? 'agenda' : 'ahora'
   const setView = (x: 'ahora' | 'agenda') => d.set((s) => ({ settings: { ...s.settings, hoyView: x } }))
-  const first = Object.keys(d.habitLog).length === 0 && Object.keys(d.checkins).length === 0
+  const first = !Object.keys(d.habitLog).some((x) => x >= d.inicio) && !Object.keys(d.checkins).some((x) => x >= d.inicio)
   const ds = dayState(d, today())
   return (
     <div className="view">
@@ -103,11 +103,11 @@ function Ahora() {
           ) : <>
             <div className="now-head">
               <span className="eyebrow">Ahora</span>
-              {ahora && <span className="countdown"><span className="pulse" aria-hidden="true" />{fmtLeft(ahora.faltan)}</span>}
+              {ahora && <span className="countdown"><span className="pulse" aria-hidden="true" />{ahora.faltan <= 0 ? `en curso · termina ${fmtLeft(ahora.fin - nowMin())}` : fmtLeft(ahora.faltan)}</span>}
             </div>
             <div className="now-main">
               <div style={{ minWidth: 0 }}>
-                <div className="cap mono">{ahora ? ahora.hora : `antes de las ${bed}`}{ahora?.intensidad && <span className={`int ${ahora.intensidad}`} style={{ marginLeft: 8 }}>{ahora.intensidad}</span>}{d.planDia[f]?.agenda && <span className="chip-mini">plan cambiado</span>}</div>
+                <div className="cap mono">{ahora ? `${ahora.hora}–${hourFmt(ahora.fin)}` : `antes de las ${bed}`}{ahora?.intensidad && <span className={`int ${ahora.intensidad}`} style={{ marginLeft: 8 }}>{ahora.intensidad}</span>}{d.planDia[f]?.agenda && <span className="chip-mini">plan cambiado</span>}</div>
                 <div className="now-title xl">{ahora ? ahora.que : 'Acostarte para dormir ' + dec(d.profile.suenoMin) + ' h'}</div>
               </div>
               {ahora && /revisi/i.test(ahora.que) && <button className="btn btn-quiet btn-sm" onClick={() => ui.go('revision')}>Preparar<Icon name="arrow-right" size={15} /></button>}
@@ -183,7 +183,7 @@ function ParaCompletar() {
   const ds = dayState(d, f)
   const pend = orden(d, ds.hs.filter((h) => !ds.log[h.id] && !excusaDe(d, f, h.id)))
   if (ds.all.length === 0) return <section className="panel"><Empty icon="list-checks" title="No hay hábitos para hoy" action={<button className="btn btn-quiet" onClick={() => ui.go('habitos')}>Configurar hábitos</button>}>Agregá hábitos y elegí qué días aplican.</Empty></section>
-  if (Object.keys(d.habitLog).length === 0)
+  if (!Object.keys(d.habitLog).some((x) => x >= d.inicio))
     return <section className="panel"><Empty icon="list-checks" title="Tu primer día empieza acá" action={<><button className="btn btn-primary" onClick={() => ui.openSheet('checkin-manana')}><Icon name="sun" />Hacer el check-in</button><button className="btn btn-quiet" onClick={() => ui.go('habitos')}>Ver hábitos</button></>}>Tocá un hábito cuando lo hacés. Lo más importante para este momento aparece primero.</Empty></section>
   if (!pend.length) return null
   return (
@@ -258,30 +258,43 @@ function Signals() {
 }
 
 // ---------------- Agenda ----------------
+const rango = (a: number, b: number) => `${hourFmt(a)}–${hourFmt(b)}`
 function Agenda() {
   const d = useStore()
   const ui = useUI()
   const f = today()
   const ds = dayState(d, f)
-  const wake = d.profile.despertar[dow(f)]
-  const bed = bedtimeFor(d.profile.despertar[dow(addDays(f, 1))], d.profile.suenoMin)
+  const wakeS = d.checkins[f]?.horaDespertar ?? d.profile.despertar[dow(f)]
+  const wake = toMin(wakeS)
+  const bedS = bedtimeFor(d.profile.despertar[dow(addDays(f, 1))], d.profile.suenoMin)
+  const bed = toMin(bedS) < wake ? toMin(bedS) + 1440 : toMin(bedS)
   const now = nowMin()
   const wm = weekMedals(d, weekStart(f))
   const xpDay = ds.hs.reduce((a, h) => a + h.xp * (habitScore(d, f, h) ?? 0), 0)
-  const winAt: Record<string, number> = { manana: toMin(wake), dia: Math.max(toMin(wake) + 120, 12 * 60), tarde: 15 * 60, noche: 21 * 60 + 30 }
-  type Ev = { min: number; key: string; node: React.ReactNode; win?: boolean }
-  const evs: Ev[] = [{ min: toMin(wake), key: 'wake', node: <div className="blk"><div className="t"><Icon name="sun" size={16} />Despertar</div><div className="cap">{d.checkins[f]?.animoManana ? 'Check-in hecho' : 'Check-in de la mañana pendiente'}</div></div> }]
-  for (const a of agendaDe(d, f))
-    evs.push({ min: toMin(a.hora), key: a.hora + a.que, node: <div className={`blk ${/revisi/i.test(a.que) ? 'key' : ''}`}><div className="row" style={{ justifyContent: 'space-between' }}><div className="t">{a.que}</div>{a.intensidad && <span className={`int ${a.intensidad}`}>{a.intensidad}</span>}</div></div> })
-  for (const m of MOMENTOS) {
-    const hs = ds.all.filter((h) => momentoDe(h, d, f) === m.id)
-    if (!hs.length) continue
-    const done = hs.filter((h) => ds.log[h.id] || excusaDe(d, f, h.id)).length
-    evs.push({ min: winAt[m.id], key: m.id, win: true, node: <div><div className="win-head"><span className="eyebrow">{m.label} · {m.hasta}</span><span className="cap num">{done}/{hs.length}</span></div><div className="hlist">{hs.map((h) => <HabitRow key={h.id} h={h} fecha={f} />)}</div></div> })
-  }
-  evs.push({ min: toMin(bed) < toMin(wake) ? toMin(bed) + 1440 : toMin(bed), key: 'bed', node: <div className="blk"><div className="t"><Icon name="moon" size={16} />Acostarte para dormir {dec(d.profile.suenoMin)} h</div><div className="cap">Mañana te levantás a las {d.profile.despertar[dow(addDays(f, 1))]}</div></div> })
-  evs.sort((a, b) => a.min - b.min)
-  const nowIdx = evs.findIndex((e) => e.min > now)
+  const plan = planDelDia(d, f, wake, bed)
+  const hecho = (hs: Habit[]) => hs.filter((h) => ds.log[h.id] || excusaDe(d, f, h.id)).length
+  type Ev = { ini: number; fin?: number; key: string; node: React.ReactNode; kind: 'fijo' | 'habito' | 'marca' }
+  const evs: Ev[] = [{ ini: wake, key: 'wake', kind: 'marca', node: <div className="blk mark"><div className="t"><Icon name="sun" size={16} />Despertar</div><div className="cap">{d.checkins[f]?.animoManana ? 'Check-in hecho' : 'Check-in de la mañana pendiente'}</div></div> }]
+  for (const b of plan.bloques)
+    evs.push({ ini: b.ini, fin: b.fin, key: `b${b.ini}${b.item.que}`, kind: 'fijo', node: (
+      <div className={`blk fijo ${/revisi/i.test(b.item.que) ? 'key' : ''}`}>
+        <div className="blk-head"><div className="t">{b.item.que}</div>{b.item.intensidad && <span className={`int ${b.item.intensidad}`}>{b.item.intensidad}</span>}</div>
+        {b.habitos.length > 0 && <div className="hlist in-blk">{b.habitos.map((h) => <HabitRow key={h.id} h={h} fecha={f} />)}</div>}
+      </div>) })
+  for (const s of plan.slots)
+    evs.push({ ini: s.ini, fin: s.fin, key: `s${s.ini}${s.habitos[0].id}`, kind: 'habito', node: (
+      <div className="blk soft">
+        {s.titulo && <div className="blk-head"><span className="eyebrow">{s.titulo}</span><span className="cap num">{hecho(s.habitos)}/{s.habitos.length}</span></div>}
+        <div className="hlist">{s.habitos.map((h) => <HabitRow key={h.id} h={h} fecha={f} />)}</div>
+      </div>) })
+  evs.push({ ini: bed, key: 'bed', kind: 'marca', node: (
+    <div className="blk mark">
+      <div className="t"><Icon name="moon" size={16} />Acostarte para dormir {dec(d.profile.suenoMin)} h</div>
+      <div className="cap">Mañana te levantás a las {d.profile.despertar[dow(addDays(f, 1))]}</div>
+      {plan.dormir && plan.dormir.length > 0 && <div className="hlist in-blk">{plan.dormir.map((h) => <HabitRow key={h.id} h={h} fecha={f} />)}</div>}
+    </div>) })
+  evs.sort((a, b) => a.ini - b.ini || (a.kind === 'fijo' ? -1 : 1))
+  const nowIdx = evs.findIndex((e) => e.ini > now)
   return (
     <>
       <section className={`horizon tl-head ${ds.n && ds.p >= 1 ? 'complete' : ''}`} style={{ ['--p' as string]: ds.p }}>
@@ -290,18 +303,32 @@ function Agenda() {
           <div className="row cap" style={{ marginTop: 6, gap: 8 }}>Semana {wm.global === null ? '—' : `${Math.round(wm.global * 100)} %`} {wm.globalMedal && <Medal m={wm.globalMedal} />} · {Math.round(xpDay)} XP hoy</div></div>
         <button className="btn btn-quiet btn-sm" onClick={() => ui.go('coach')}><Icon name="sparkles" size={15} />Cambiar el día</button>
       </section>
-      {d.planDia[f]?.agenda && <p className="cap" style={{ margin: '10px 2px 0' }}>La agenda de hoy fue cambiada. Podés revertirlo desde el Coach.</p>}
-      <div className="timeline" aria-label="Agenda del día">
-        {evs.map((e, i) => (
-          <div key={e.key}>
-            {i === (nowIdx === -1 ? evs.length : nowIdx) && <div className="nowline" role="presentation"><span>{hourFmt(now)}</span></div>}
-            <div className={`slot ${!e.win && e.min < now - 30 ? 'past' : ''} ${e.win && e.min <= now && (evs[i + 1]?.min ?? 1e9) > now ? 'cur' : ''}`}>
-              <span className="slot-time">{hourFmt(e.min)}</span>{e.node}
-            </div>
-          </div>
-        ))}
-        {nowIdx === -1 && <div className="nowline" role="presentation"><span>{hourFmt(now)}</span></div>}
+      {d.planDia[f]?.agenda && <p className="cap" style={{ margin: '12px 2px 0' }}>La agenda de hoy fue cambiada. Podés revertirlo desde el Coach.</p>}
+      <div className="agenda-grid">
+        <div className="timeline" aria-label="Agenda del día">
+          {evs.map((e, i) => {
+            const cur = e.fin !== undefined && e.ini <= now && e.fin > now
+            const past = (e.fin ?? e.ini + 30) <= now
+            return (
+              <div key={e.key}>
+                {i === (nowIdx === -1 ? evs.length : nowIdx) && <div className="nowline" role="presentation"><span>{hourFmt(now)}</span></div>}
+                <div className={`slot k-${e.kind} ${past ? 'past' : ''} ${cur ? 'cur' : ''}`}>
+                  <span className="slot-time">{hourFmt(e.ini)}{e.fin !== undefined && <small>{hourFmt(e.fin)}</small>}</span>
+                  {e.node}
+                </div>
+              </div>
+            )
+          })}
+          {nowIdx === -1 && <div className="nowline" role="presentation"><span>{hourFmt(now)}</span></div>}
+        </div>
+        {plan.sinHora.length > 0 && (
+          <section className="panel pad any-time">
+            <div className="win-head"><span className="eyebrow">En cualquier momento del día</span><span className="cap num">{hecho(plan.sinHora)}/{plan.sinHora.length}</span></div>
+            <div className="hlist">{plan.sinHora.map((h) => <HabitRow key={h.id} h={h} fecha={f} compact />)}</div>
+          </section>
+        )}
       </div>
+      <p className="cap" style={{ margin: '14px 2px 0' }}>Los horarios de los hábitos son una sugerencia según los huecos libres del día ({rango(wake, bed)}). Para fijar uno, mantené presionado el hábito y elegí una hora.</p>
       {compliance(d, [f]) === null && ds.all.length === 0 && <p className="cap">No hay hábitos para hoy.</p>}
     </>
   )

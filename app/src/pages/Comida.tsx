@@ -6,12 +6,13 @@ import { fmtShort, today, uid } from '../lib/date'
 import { ALIMENTOS, buscar, CATEGORIAS, macros } from '../lib/foods'
 import type { Alimento, CategoriaAlimento, ComidaGuardada, MomentoComida } from '../lib/types'
 import { Icon } from '../components/Icon'
-import { Bar, Card, Field, PageHead, Seg } from '../components/ui'
+import { Bar, Card, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 
 type Sel = { key: string; foodId?: string; nombre: string; gramos?: number; kcal: number; prot: number; carb: number; grasa: number }
 const MOMENTOS: [MomentoComida, string][] = [['desayuno', 'Desayuno'], ['almuerzo', 'Almuerzo'], ['merienda', 'Merienda'], ['cena', 'Cena'], ['snack', 'Snack']]
 const momentoAhora = (): MomentoComida => { const h = new Date().getHours(); return h < 11 ? 'desayuno' : h < 15 ? 'almuerzo' : h < 19 ? 'merienda' : h < 23 ? 'cena' : 'snack' }
 const r1 = (n: number) => Math.round(n * 10) / 10
+const dec = (n: number) => String(r1(n)).replace('.', ',')
 
 export default function Comida() {
   const d = useStore()
@@ -78,7 +79,7 @@ export default function Comida() {
 
           {!q.trim() && tab === 'recientes' && (recientes.length ? <div className="food-list">{recientes.map((r) => (
             <button key={r.key} className="food-row" onClick={() => push(r)}>
-              <span className="grow"><b>{r.nombre}</b><span className="cap">{r.gramos ? `${r.gramos} g · ` : ''}{Math.round(r.kcal)} kcal · {Math.round(r.prot)} g P</span></span>
+              <span className="grow"><b>{r.nombre}</b><span className="cap">{r.gramos ? `${r.gramos} g · ` : ''}{Math.round(r.kcal)} kcal · {dec(r.prot)} g P</span></span>
               <span className="fr-add"><Icon name="plus" size={16} /></span>
             </button>
           ))}</div> : <p className="cap">Lo que registres va a aparecer acá para repetirlo con un toque.</p>)}
@@ -112,10 +113,10 @@ export default function Comida() {
           <section className="panel pad" aria-live="polite">
             <div className="sec" style={{ margin: '0 0 8px' }}><span className="eyebrow">Cómo queda tu día</span><span className="cap">rayado = lo que sumás</span></div>
             <div className="proj-row"><span className="cap">Calorías</span><Bar value={base.kcal / P.kcalObjetivo} ghost={(base.kcal + add.kcal) / P.kcalObjetivo} tone={base.kcal + add.kcal > P.kcalObjetivo * 1.05 ? 'over' : undefined} /><span className="v num"><b>{Math.round(base.kcal + add.kcal).toLocaleString('es-AR')}</b> / {P.kcalObjetivo.toLocaleString('es-AR')}</span></div>
-            <div className="proj-row"><span className="cap">Proteína</span><Bar value={base.prot / P.protObjetivo} ghost={(base.prot + add.prot) / P.protObjetivo} /><span className="v num"><b>{Math.round(base.prot + add.prot)}</b> / {P.protObjetivo} g</span></div>
+            <div className="proj-row"><span className="cap">Proteína</span><Bar value={base.prot / P.protObjetivo} ghost={(base.prot + add.prot) / P.protObjetivo} /><span className="v num"><b>{dec(r1(base.prot + add.prot))}</b> / {P.protObjetivo} g</span></div>
             <div className="macro-mini num"><span>C <b>{Math.round(base.carb + add.carb)}</b> g</span><span>G <b>{Math.round(base.grasa + add.grasa)}</b> g</span></div>
             {sel.length ? <div style={{ marginTop: 10 }}>{sel.map((f) => (
-              <div className="list-row" key={f.key}><span className="grow">{f.nombre}{f.gramos ? <span className="cap"> · {f.gramos} g</span> : null}</span><span className="k">{Math.round(f.kcal)} kcal · {Math.round(f.prot)} g</span><button className="icon-btn sm" aria-label={`Quitar ${f.nombre}`} onClick={() => setSel((x) => x.filter((y) => y.key !== f.key))}><Icon name="x" size={15} /></button></div>
+              <div className="list-row" key={f.key}><span className="grow">{f.nombre}{f.gramos ? <span className="cap"> · {dec(f.gramos)} g</span> : null}</span><span className="k">{Math.round(f.kcal)} kcal · {dec(f.prot)} g</span><button className="icon-btn sm" aria-label={`Quitar ${f.nombre}`} onClick={() => setSel((x) => x.filter((y) => y.key !== f.key))}><Icon name="x" size={15} /></button></div>
             ))}</div> : <p className="cap" style={{ marginTop: 10 }}>Elegí uno o varios alimentos. La proyección se actualiza antes de guardar.</p>}
             <div className="savebar"><button className="btn btn-primary grow" disabled={!sel.length} onClick={save}>{sel.length ? `Guardar en ${MOMENTOS.find((m) => m[0] === momento)?.[1].toLowerCase()}` : 'Elegí un alimento'}</button></div>
             {sel.length > 1 && <form className="row" style={{ flexWrap: 'nowrap', marginTop: 6 }} onSubmit={(e) => { e.preventDefault(); guardarCombo() }}><input className="grow" aria-label="Nombre de la comida guardada" placeholder="Guardar como… (ej. Desayuno habitual)" value={nombreCombo} onChange={(e) => setNombreCombo(e.target.value)} /><button className="btn btn-quiet" disabled={!nombreCombo.trim()}><Icon name="star" size={15} /></button></form>}
@@ -125,7 +126,7 @@ export default function Comida() {
               const ms = dayMeals.filter((m) => (m.momento ?? 'snack') === k)
               if (!ms.length) return null
               return <div key={k} style={{ marginBottom: 8 }}><div className="eyebrow" style={{ margin: '6px 0 2px' }}>{n} · {Math.round(ms.reduce((a, m) => a + m.kcal, 0))} kcal</div>
-                {ms.map((m) => <div className="list-row" key={m.id}><span className="grow">{m.nombre}{m.gramos ? <span className="cap"> · {m.gramos} g</span> : null}</span><span className="k">{m.kcal} kcal · {Math.round(m.prot)} g</span><button className="icon-btn sm" aria-label={`Borrar ${m.nombre}`} onClick={() => delMeal(m.id)}><Icon name="trash" size={15} /></button></div>)}</div>
+                {ms.map((m) => <div className="list-row" key={m.id}><span className="grow">{m.nombre}{m.gramos ? <span className="cap"> · {dec(m.gramos)} g</span> : null}</span><span className="k">{m.kcal} kcal · {dec(m.prot)} g</span><button className="icon-btn sm" aria-label={`Borrar ${m.nombre}`} onClick={() => delMeal(m.id)}><Icon name="trash" size={15} /></button></div>)}</div>
             })}
           </Card>
         </aside>
@@ -139,7 +140,7 @@ function FoodRow({ a, open, fav, onOpen, onFav, onAdd }: { a: Alimento; open: bo
   const [n, setN] = useState(1)
   const [g, setG] = useState('')
   const por = a.porciones[pi] ?? a.porciones[0]
-  const grams = g ? Number(g) : Math.round(por.g * n)
+  const grams = g ? (parseNum(g) ?? 0) : r1(por.g * n)
   const m = macros(a, grams || 0)
   const def = macros(a, a.porciones[0].g)
   return (
@@ -147,7 +148,7 @@ function FoodRow({ a, open, fav, onOpen, onFav, onAdd }: { a: Alimento; open: bo
       <div className="fr-top">
         <button className="grow fr-btn" onClick={onOpen} aria-expanded={open}>
           <b>{a.nombre}</b>
-          <span className="cap">{a.porciones[0].n} · {def.kcal} kcal · {def.prot} g P</span>
+          <span className="cap">{a.porciones[0].n} · {def.kcal} kcal · {dec(def.prot)} g P</span>
         </button>
         <button className={`icon-btn sm star ${fav ? 'on' : ''}`} aria-label={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'} aria-pressed={fav} onClick={onFav}><Icon name="star" size={15} /></button>
         <button className="fr-add" aria-label={`Sumar ${a.porciones[0].n} de ${a.nombre}`} onClick={() => onAdd({ foodId: a.id, nombre: a.nombre, gramos: a.porciones[0].g, ...def })}><Icon name="plus" size={16} /></button>
@@ -161,10 +162,10 @@ function FoodRow({ a, open, fav, onOpen, onFav, onAdd }: { a: Alimento; open: bo
               <span className="num">{String(n).replace('.', ',')}</span>
               <button type="button" aria-label="Más" onClick={() => { setG(''); setN(n < 1 ? 1 : n + 1) }}><Icon name="plus" size={15} /></button>
             </div>
-            <input aria-label="Gramos" inputMode="numeric" type="number" placeholder={`${Math.round(por.g * n)} g`} value={g} onChange={(e) => setG(e.target.value)} style={{ width: 96 }} />
-            <span className="grow cap num" style={{ textAlign: 'right' }}>{m.kcal} kcal · {m.prot} P · {m.carb} C · {m.grasa} G</span>
+            <NumInput aria-label="Gramos" className="grams-in" placeholder={`${dec(r1(por.g * n))} g`} value={g} onValue={(_, raw) => setG(raw)} />
+            <span className="grow cap num" style={{ textAlign: 'right' }}>{m.kcal} kcal · {dec(m.prot)} P · {dec(m.carb)} C · {dec(m.grasa)} G</span>
           </div>
-          <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} disabled={!grams} onClick={() => onAdd({ foodId: a.id, nombre: a.nombre, gramos: grams, ...m })}>Sumar {grams} g</button>
+          <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} disabled={!grams} onClick={() => onAdd({ foodId: a.id, nombre: a.nombre, gramos: grams, ...m })}>Sumar {dec(grams)} g</button>
         </div>
       )}
     </div>
@@ -173,7 +174,7 @@ function FoodRow({ a, open, fav, onOpen, onFav, onAdd }: { a: Alimento; open: bo
 
 function NuevoAlimento({ inicial, onCreate }: { inicial: string; onCreate: (a: Alimento, gramos: number) => void }) {
   const [v, setV] = useState({ nombre: inicial, porcion: '1 porción', g: '100', kcal: '', prot: '', carb: '', grasa: '' })
-  const n = (x: string) => Math.max(0, Number(x.replace(',', '.')) || 0)
+  const n = (x: string) => Math.max(0, parseNum(x) ?? 0)
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     const g = n(v.g) || 100
@@ -185,9 +186,9 @@ function NuevoAlimento({ inicial, onCreate }: { inicial: string; onCreate: (a: A
     <form className="panel pad form-grid" onSubmit={submit}>
       <Field label="Nombre" id="na-n"><input id="na-n" value={v.nombre} onChange={(e) => setV({ ...v, nombre: e.target.value })} placeholder="Ej. tarta de mi vieja" /></Field>
       <Field label="Porción" id="na-p"><input id="na-p" value={v.porcion} onChange={(e) => setV({ ...v, porcion: e.target.value })} /></Field>
-      <Field label="Gramos de la porción" id="na-g"><input id="na-g" inputMode="decimal" type="number" value={v.g} onChange={(e) => setV({ ...v, g: e.target.value })} /></Field>
+      <Field label="Gramos de la porción" id="na-g"><NumInput id="na-g" value={v.g} onValue={(_, raw) => setV({ ...v, g: raw })} /></Field>
       {(['kcal', 'prot', 'carb', 'grasa'] as const).map((k) => (
-        <Field key={k} label={`${{ kcal: 'Calorías', prot: 'Proteína (g)', carb: 'Carbos (g)', grasa: 'Grasas (g)' }[k]} por porción`} id={`na-${k}`}><input id={`na-${k}`} inputMode="decimal" type="number" min={0} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>
+        <Field key={k} label={`${{ kcal: 'Calorías', prot: 'Proteína (g)', carb: 'Carbos (g)', grasa: 'Grasas (g)' }[k]} por porción`} id={`na-${k}`}><NumInput id={`na-${k}`} value={v[k]} onValue={(_, raw) => setV({ ...v, [k]: raw })} /></Field>
       ))}
       <button className="btn btn-quiet" disabled={!v.nombre.trim() || !v.kcal}><Icon name="plus" size={16} />Crear y sumar</button>
     </form>

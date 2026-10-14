@@ -5,7 +5,7 @@ import { bestE1rm, dayNutrition, e1rm } from '../lib/logic'
 import { addDays, fmtShort, today, uid, weekStart } from '../lib/date'
 import type { Exercise, Intensity, Photo, Workout } from '../lib/types'
 import { Icon } from '../components/Icon'
-import { Bar, Card, Empty, Field, PageHead, Seg } from '../components/ui'
+import { Bar, Card, Empty, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 import { BarC, LineC, PieC } from '../components/charts'
 
 type Tab = 'entreno' | 'nutricion' | 'cuerpo'
@@ -16,7 +16,7 @@ export default function Fisico() {
   return (
     <div className="view">
       <PageHead eyebrow="Pilar izquierdo · rugby" title="Físico" />
-      <div style={{ marginBottom: 16 }}><Seg label="Sección" value={tab} onChange={(v) => ui.go('fisico', v)} options={[['entreno', 'Entrenamiento'], ['nutricion', 'Nutrición'], ['cuerpo', 'Cuerpo y fotos']]} /></div>
+      <div style={{ marginBottom: 16 }}><Seg label="Sección" value={tab} onChange={(v) => ui.go('fisico', v)} options={[['entreno', 'Entrenamiento'], ['nutricion', 'Nutrición'], ['cuerpo', 'Peso y fotos']]} /></div>
       {tab === 'entreno' && <Entreno />}
       {tab === 'nutricion' && <Nutricion />}
       {tab === 'cuerpo' && <Cuerpo />}
@@ -70,7 +70,7 @@ function Entreno() {
               <datalist id="ejs">{nombres.map((n) => <option key={n} value={n} />)}</datalist>
               <Field label="Series" id="e-s"><input id="e-s" type="number" inputMode="numeric" value={ex.series} onChange={(e) => setEx({ ...ex, series: Number(e.target.value) })} /></Field>
               <Field label="Reps" id="e-r"><input id="e-r" type="number" inputMode="numeric" value={ex.reps} onChange={(e) => setEx({ ...ex, reps: Number(e.target.value) })} /></Field>
-              <Field label="Kg" id="e-k"><input id="e-k" type="number" inputMode="decimal" value={ex.kg} onChange={(e) => setEx({ ...ex, kg: Number(e.target.value) })} /></Field>
+              <Field label="Kg" id="e-k"><NumInput id="e-k" value={ex.kg} onValue={(n) => setEx({ ...ex, kg: (n ?? 0) })} /></Field>
               <button className="btn btn-quiet" disabled={!ex.nombre.trim()}><Icon name="plus" size={16} />Sumar</button>
             </form>
             <Field label="Nota" id="w-n"><input id="w-n" value={w.nota ?? ''} placeholder="Cómo te sentiste, molestias en la pierna…" onChange={(e) => setW({ ...w, nota: e.target.value })} /></Field>
@@ -165,7 +165,7 @@ function Cuerpo() {
   const lastB = body.at(-1)
   const save = (ev: React.FormEvent) => {
     ev.preventDefault()
-    const n = (v: string) => (v ? Number(v.replace(',', '.')) : undefined)
+    const n = (v: string) => (v ? parseNum(v) : undefined)
     d.set((s) => ({ body: [...s.body.filter((b) => b.fecha !== e.fecha), { fecha: e.fecha, peso: n(e.peso), grasa: n(e.grasa), cintura: n(e.cintura) }] }))
     ui.notify('Medidas guardadas')
     setE({ fecha: today(), peso: '', grasa: '', cintura: '' })
@@ -190,9 +190,9 @@ function Cuerpo() {
         <Card title="Registrar medidas" icon="ruler">
           <form className="form-grid" onSubmit={save}>
             <Field label="Fecha" id="b-f"><input id="b-f" type="date" value={e.fecha} max={today()} onChange={(x) => setE({ ...e, fecha: x.target.value })} /></Field>
-            <Field label="Peso (kg)" id="b-p"><input id="b-p" type="number" inputMode="decimal" step="0.1" value={e.peso} onChange={(x) => setE({ ...e, peso: x.target.value })} /></Field>
-            <Field label="% grasa" id="b-g"><input id="b-g" type="number" inputMode="decimal" step="0.1" value={e.grasa} onChange={(x) => setE({ ...e, grasa: x.target.value })} /></Field>
-            <Field label="Cintura (cm)" id="b-c"><input id="b-c" type="number" inputMode="decimal" step="0.5" value={e.cintura} onChange={(x) => setE({ ...e, cintura: x.target.value })} /></Field>
+            <Field label="Peso (kg)" id="b-p"><NumInput id="b-p" value={e.peso} onValue={(_, raw) => setE({ ...e, peso: raw })} /></Field>
+            <Field label="% grasa" id="b-g"><NumInput id="b-g" value={e.grasa} onValue={(_, raw) => setE({ ...e, grasa: raw })} /></Field>
+            <Field label="Cintura (cm)" id="b-c"><NumInput id="b-c" value={e.cintura} onValue={(_, raw) => setE({ ...e, cintura: raw })} /></Field>
             <button className="btn btn-primary" disabled={!e.peso && !e.grasa && !e.cintura}>Guardar</button>
           </form>
         </Card>

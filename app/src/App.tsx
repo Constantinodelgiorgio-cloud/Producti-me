@@ -8,6 +8,7 @@ import { CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './componen
 import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
 import { syncCorreo } from './lib/correo'
+import { iniciarSync, sincronizar } from './lib/sync'
 import Hoy from './pages/Hoy'
 import Habitos from './pages/Habitos'
 
@@ -21,19 +22,28 @@ const Revision = lazy(() => import('./pages/Revision'))
 const Ajustes = lazy(() => import('./pages/Ajustes'))
 const Coach = lazy(() => import('./pages/Coach'))
 const Areas = lazy(() => import('./pages/Areas'))
-const PAGES: Record<Route, React.ComponentType> = { hoy: Hoy, habitos: Habitos, comida: Comida, fisico: Fisico, estudio: Estudio, finanzas: Finanzas, vida: Vida, revision: Revision, ajustes: Ajustes, coach: Coach, areas: Areas }
+const Cuerpo = lazy(() => import('./pages/Cuerpo'))
+const PAGES: Record<Route, React.ComponentType> = { hoy: Hoy, habitos: Habitos, comida: Comida, fisico: Fisico, estudio: Estudio, finanzas: Finanzas, vida: Vida, revision: Revision, ajustes: Ajustes, coach: Coach, areas: Areas, cuerpo: Cuerpo }
 
-const SIDE: [Route, string][] = [['hoy', '1'], ['habitos', '2'], ['coach', '3'], ['fisico', '4'], ['estudio', '5'], ['finanzas', '6'], ['vida', '7']]
+const SIDE: [Route, string][] = [['hoy', '1'], ['habitos', '2'], ['coach', '3'], ['fisico', '4'], ['estudio', '5'], ['finanzas', '6'], ['vida', '7'], ['cuerpo', '8']]
 const TABS: (Route | '+')[] = ['hoy', 'habitos', '+', 'coach', 'areas']
-const AREA_ROUTES: Route[] = ['areas', 'fisico', 'comida', 'estudio', 'finanzas', 'vida', 'revision', 'ajustes']
+const AREA_ROUTES: Route[] = ['areas', 'cuerpo', 'fisico', 'comida', 'estudio', 'finanzas', 'vida', 'revision', 'ajustes']
 
+/** Marca "Horizonte": un sol que sale sobre la curva de un horizonte. */
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-    <defs><linearGradient id="lg-h" x1="0" x2="1"><stop offset="0" stopColor="#5E78D6" /><stop offset="1" stopColor="#C3D0FF" /></linearGradient></defs>
-    <rect x="1" y="1" width="62" height="62" rx="16" fill="#0A0B0E" stroke="#262A31" />
-    <path d="M12 38h40" stroke="#2A2E36" strokeWidth="4.5" strokeLinecap="round" />
-    <path d="M12 38h27" stroke="url(#lg-h)" strokeWidth="4.5" strokeLinecap="round" />
-    <circle cx="39.5" cy="38" r="5.5" fill="#EEF2FF" />
+    <defs>
+      <radialGradient id="lg-sun" cx="32" cy="33" r="15" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#fff" /><stop offset=".33" stopColor="#E8EDFF" /><stop offset=".36" stopColor="#C3D0FF" stopOpacity=".45" /><stop offset="1" stopColor="#8EA8FF" stopOpacity="0" /></radialGradient>
+      <linearGradient id="lg-rim" x1="9" x2="55" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#8EA8FF" stopOpacity="0" /><stop offset=".5" stopColor="#F2F5FF" /><stop offset="1" stopColor="#8EA8FF" stopOpacity="0" /></linearGradient>
+      <clipPath id="lg-c"><rect width="64" height="64" rx="15" /></clipPath>
+    </defs>
+    <g clipPath="url(#lg-c)">
+      <rect width="64" height="64" fill="#0A0B0F" />
+      <circle cx="32" cy="33" r="15" fill="url(#lg-sun)" />
+      <circle cx="32" cy="72" r="38" fill="#07080B" />
+      <path d="M9 42 A38 38 0 0 1 55 42" fill="none" stroke="url(#lg-rim)" strokeWidth="1.8" strokeLinecap="round" />
+    </g>
+    <rect x=".5" y=".5" width="63" height="63" rx="14.5" fill="none" stroke="#262A31" />
   </svg>
 )
 
@@ -47,14 +57,16 @@ export default function App() {
   useEffect(() => {
     if (!ready) return
     const run = () => { const patch = processRules(useStore.getState()); if (patch) useStore.getState().set(() => patch) }
-    run()
+    // Primero se traen los datos de los otros dispositivos; recién después se evalúan las reglas del día.
+    const stop = iniciarSync()
+    void sincronizar().finally(run)
     // Correo de pagos: al abrir la app y cada 10 minutos mientras está abierta.
     const mail = () => { if (useStore.getState().settings.correoUrl) syncCorreo().catch(() => { /* el error queda en correo.error */ }) }
     mail()
     const id = window.setInterval(() => { run(); mail() }, 10 * 60 * 1000)
     const vis = () => { if (document.visibilityState === 'visible') { run(); mail() } }
     document.addEventListener('visibilitychange', vis)
-    return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
+    return () => { stop(); window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
   }, [ready])
   return ready ? <Shell /> : <Splash />
 }
@@ -110,7 +122,7 @@ function Shell() {
     <div className="shell" data-section={SECTION[route]}>
       <div className="aura" aria-hidden="true" />
       <nav className="side" aria-label="Navegación principal">
-        <div className="brand"><Logo /><b>PRODUCTI-ME</b></div>
+        <div className="brand"><Logo size={28} /><b>PRODUCTI-ME</b></div>
         <button className="side-cta" onClick={() => ui.openSheet('registrar')}><Icon name="plus" />Registrar<span className="kbd end">R</span></button>
         {SIDE.map(([k, key]) => (
           <button key={k} className="side-btn" data-s={SECTION[k]} aria-current={route === k || (k === 'fisico' && route === 'comida') ? 'page' : undefined} onClick={() => ui.go(k)}>
@@ -178,7 +190,7 @@ function Palette() {
     ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')],
     ['dumbbell', 'Registrar entrenamiento', () => ui.go('fisico', 'entreno')], ['receipt', 'Registrar gasto o ingreso', () => ui.go('finanzas', 'movimientos')],
     ['file-text', 'Subir un comprobante', () => ui.go('finanzas', 'comprobante')],
-    ['feather', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],
+    ['feather', 'Escribir en el diario', () => ui.go('vida', 'diario')], ['wind', 'Respirar unos minutos', () => ui.go('cuerpo', 'respirar')], ['stretch', 'Estirar', () => ui.go('cuerpo', 'estirar')], ['timer', 'Iniciar sesión de estudio', () => ui.go('estudio')],
     ...SIDE.map(([k]) => [ROUTE_INFO[k][1], `Ir a ${ROUTE_INFO[k][0]}`, () => ui.go(k)] as [string, string, () => void]),
     ['areas', 'Ir a Áreas', () => ui.go('areas')],
     ['calendar-check', 'Abrir la revisión semanal', () => ui.go('revision')], ['settings', 'Abrir ajustes', () => ui.go('ajustes')],

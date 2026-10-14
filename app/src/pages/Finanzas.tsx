@@ -6,7 +6,7 @@ import { diffDays, fmtShort, today, uid } from '../lib/date'
 import { CATS_GASTO, CATS_INGRESO, CUENTAS } from '../lib/seed'
 import type { Activo, CuentaId, MoneyMove, Origen, Pendiente } from '../lib/types'
 import { Icon } from '../components/Icon'
-import { Bar, Card, Field, PageHead, Seg } from '../components/ui'
+import { Bar, Card, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 import { BarC, Candles } from '../components/charts'
 import { useScrollToSub } from '../components/useScrollTo'
 
@@ -47,7 +47,8 @@ function Cartera() {
   const cats = [...new Set([...CATS_GASTO, ...delMes.filter((m) => m.tipo === 'gasto').map((m) => m.categoria)])]
     .map((c) => ({ c, v: delMes.filter((m) => m.tipo === 'gasto' && m.categoria === c).reduce((a, m) => a + m.monto, 0), b: d.presupuestos[c] ?? 0 }))
     .filter((x) => x.v > 0 || x.b > 0).sort((a, b) => b.v - a.v)
-  const porCuenta = CUENTAS.map((c) => ({ ...c, v: delMes.filter((m) => m.tipo === 'gasto' && m.cuenta === c.id).reduce((a, m) => a + m.monto, 0) }))
+  const sinCuenta = delMes.filter((m) => m.tipo === 'gasto' && !m.cuenta).reduce((a, m) => a + m.monto, 0)
+  const porCuenta = [...CUENTAS.map((c) => ({ ...c, v: delMes.filter((m) => m.tipo === 'gasto' && m.cuenta === c.id).reduce((a, m) => a + m.monto, 0) })), ...(sinCuenta ? [{ id: 'sin', nombre: 'Sin cuenta asignada', icon: 'wallet', v: sinCuenta }] : [])]
   const meses = [...new Set(ars0.map((m) => m.fecha.slice(0, 7)))].sort().slice(-6).map((m) => ({
     mes: m.slice(5), ingresos: ars0.filter((x) => x.fecha.startsWith(m) && x.tipo === 'ingreso').reduce((a, x) => a + x.monto, 0),
     gastos: ars0.filter((x) => x.fecha.startsWith(m) && x.tipo === 'gasto').reduce((a, x) => a + x.monto, 0),
@@ -127,7 +128,7 @@ function NuevoMovimiento() {
       <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2"><Icon name="receipt" size={16} />Registrar</h2><Seg label="Tipo" value={mv.tipo} onChange={(t) => setMv({ ...mv, tipo: t, categoria: t === 'gasto' ? 'Supermercado' : CATS_INGRESO[0] })} options={[['gasto', 'Gasto'], ['ingreso', 'Ingreso']]} /></div>
       <div className="chips" role="group" aria-label="Cuenta" style={{ marginBottom: 12 }}>{CUENTAS.map((c) => <button key={c.id} type="button" className="chip" aria-pressed={mv.cuenta === c.id} onClick={() => setMv({ ...mv, cuenta: c.id })}><Icon name={c.icon} size={13} />{c.nombre}</button>)}</div>
       <form className="form-grid" onSubmit={save}>
-        <Field label={`Monto (${mv.moneda === 'USD' ? 'USD' : 'pesos'})`} id="m-m"><input id="m-m" type="number" inputMode="decimal" value={mv.monto || ''} onChange={(e) => setMv({ ...mv, monto: Number(e.target.value) })} /></Field>
+        <Field label={`Monto (${mv.moneda === 'USD' ? 'USD' : 'pesos'})`} id="m-m"><NumInput id="m-m" value={mv.monto || ''} onValue={(n) => setMv({ ...mv, monto: (n ?? 0) })} /></Field>
         <Field label="Categoría" id="m-c"><select id="m-c" value={mv.categoria} onChange={(e) => setMv({ ...mv, categoria: e.target.value })}>{(mv.tipo === 'gasto' ? CATS_GASTO : CATS_INGRESO).map((c) => <option key={c}>{c}</option>)}</select></Field>
         <Field label="Comercio o persona" id="m-co"><input id="m-co" value={mv.comercio ?? ''} onChange={(e) => setMv({ ...mv, comercio: e.target.value })} /></Field>
         <Field label="Fecha" id="m-f"><input id="m-f" type="date" value={mv.fecha} max={today()} onChange={(e) => setMv({ ...mv, fecha: e.target.value })} /></Field>
@@ -272,8 +273,8 @@ function Patrimonio() {
     e.preventDefault()
     const f = snap.fecha
     d.set((s) => ({
-      savings: snap.ahorro ? [...s.savings.filter((x) => x.fecha !== f), { fecha: f, valor: Number(snap.ahorro) }] : s.savings,
-      portfolio: snap.portafolio ? [...s.portfolio.filter((x) => x.fecha !== f), { fecha: f, valor: Number(snap.portafolio) }] : s.portfolio,
+      savings: snap.ahorro ? [...s.savings.filter((x) => x.fecha !== f), { fecha: f, valor: (parseNum(snap.ahorro) ?? 0) }] : s.savings,
+      portfolio: snap.portafolio ? [...s.portfolio.filter((x) => x.fecha !== f), { fecha: f, valor: (parseNum(snap.portafolio) ?? 0) }] : s.portfolio,
     }))
     ui.notify('Valores guardados')
     setSnap({ fecha: today(), ahorro: '', portafolio: '' })
@@ -298,15 +299,15 @@ function Patrimonio() {
           {d.posiciones.length === 0 ? <p className="cap">Cargá cada inversión (CEDEAR, acción, cripto, FCI, plazo fijo, dólares) con su valor actual en USD.</p> : d.posiciones.map((p) => (
             <div className="list-row" key={p.id}>
               <span className="grow"><span style={{ display: 'block' }}>{p.activo}</span><span className="cap">{p.tipo} · {p.cantidad} · actualizado {fmtShort(p.actualizado)}</span></span>
-              <input aria-label={`Valor de ${p.activo}`} type="number" inputMode="decimal" style={{ width: 110, minHeight: 34 }} value={p.valorUSD} onChange={(e) => d.set((s) => ({ posiciones: s.posiciones.map((x) => (x.id === p.id ? { ...x, valorUSD: Number(e.target.value), actualizado: today() } : x)) }))} />
+              <NumInput aria-label={`Valor de ${p.activo}`} style={{ width: 110, minHeight: 34 }} value={p.valorUSD} onValue={(n) => d.set((s) => ({ posiciones: s.posiciones.map((x) => (x.id === p.id ? { ...x, valorUSD: (n ?? 0), actualizado: today() } : x)) }))} />
               <button className="icon-btn sm" aria-label={`Borrar ${p.activo}`} onClick={() => d.set((s) => ({ posiciones: s.posiciones.filter((x) => x.id !== p.id) }))}><Icon name="trash" size={15} /></button>
             </div>
           ))}
-          <form className="form-grid" style={{ marginTop: 12 }} onSubmit={(e) => { e.preventDefault(); if (!pos.activo.trim()) return; d.set((s) => ({ posiciones: [...s.posiciones, { id: uid(), activo: pos.activo.trim(), tipo: pos.tipo, cantidad: Number(pos.cantidad) || 0, valorUSD: Number(pos.valorUSD) || 0, actualizado: today() }] })); setPos({ activo: '', tipo: pos.tipo, cantidad: '', valorUSD: '' }) }}>
+          <form className="form-grid" style={{ marginTop: 12 }} onSubmit={(e) => { e.preventDefault(); if (!pos.activo.trim()) return; d.set((s) => ({ posiciones: [...s.posiciones, { id: uid(), activo: pos.activo.trim(), tipo: pos.tipo, cantidad: parseNum(pos.cantidad) || 0, valorUSD: parseNum(pos.valorUSD) || 0, actualizado: today() }] })); setPos({ activo: '', tipo: pos.tipo, cantidad: '', valorUSD: '' }) }}>
             <Field label="Activo" id="po-a"><input id="po-a" value={pos.activo} placeholder="Ej. SPY, AAPL, BTC" onChange={(e) => setPos({ ...pos, activo: e.target.value })} /></Field>
             <Field label="Tipo" id="po-t"><select id="po-t" value={pos.tipo} onChange={(e) => setPos({ ...pos, tipo: e.target.value as Activo })}>{TIPOS_ACTIVO.map((x) => <option key={x}>{x}</option>)}</select></Field>
-            <Field label="Cantidad" id="po-c"><input id="po-c" type="number" inputMode="decimal" value={pos.cantidad} onChange={(e) => setPos({ ...pos, cantidad: e.target.value })} /></Field>
-            <Field label="Valor (USD)" id="po-v"><input id="po-v" type="number" inputMode="decimal" value={pos.valorUSD} onChange={(e) => setPos({ ...pos, valorUSD: e.target.value })} /></Field>
+            <Field label="Cantidad" id="po-c"><NumInput id="po-c" value={pos.cantidad} onValue={(_, raw) => setPos({ ...pos, cantidad: raw })} /></Field>
+            <Field label="Valor (USD)" id="po-v"><NumInput id="po-v" value={pos.valorUSD} onValue={(_, raw) => setPos({ ...pos, valorUSD: raw })} /></Field>
             <button className="btn btn-quiet" disabled={!pos.activo.trim()}><Icon name="plus" size={16} />Agregar</button>
           </form>
           {totalPos > 0 && <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} onClick={() => { d.set((s) => ({ portfolio: [...s.portfolio.filter((x) => x.fecha !== today()), { fecha: today(), valor: totalPos }] })); ui.notify(`Valor del portafolio de hoy: ${usd(totalPos)}`) }}>Registrar {usd(totalPos)} como valor de hoy</button>}
@@ -319,19 +320,19 @@ function Patrimonio() {
           <h2 className="h2" style={{ marginBottom: 12 }}><Icon name="wallet" size={16} />Actualizar valores</h2>
           <form className="form-grid" onSubmit={saveSnap}>
             <Field label="Fecha" id="v-f"><input id="v-f" type="date" value={snap.fecha} max={today()} onChange={(e) => setSnap({ ...snap, fecha: e.target.value })} /></Field>
-            <Field label="Ahorro total (USD)" id="v-a"><input id="v-a" type="number" inputMode="decimal" value={snap.ahorro} onChange={(e) => setSnap({ ...snap, ahorro: e.target.value })} /></Field>
-            <Field label="Portafolio (USD)" id="v-p"><input id="v-p" type="number" inputMode="decimal" value={snap.portafolio} onChange={(e) => setSnap({ ...snap, portafolio: e.target.value })} /></Field>
+            <Field label="Ahorro total (USD)" id="v-a"><NumInput id="v-a" value={snap.ahorro} onValue={(_, raw) => setSnap({ ...snap, ahorro: raw })} /></Field>
+            <Field label="Portafolio (USD)" id="v-p"><NumInput id="v-p" value={snap.portafolio} onValue={(_, raw) => setSnap({ ...snap, portafolio: raw })} /></Field>
             <button className="btn btn-primary" disabled={!snap.ahorro && !snap.portafolio}>Guardar</button>
           </form>
           <p className="cap" style={{ marginTop: 10 }}>Para medir el semestre, cargá el valor del portafolio al 1/7 con esa fecha.</p>
         </section>
         <section className="panel pad">
           <h2 className="h2" style={{ marginBottom: 12 }}><Icon name="arrow-up" size={16} />Aportes y retiros</h2>
-          <form className="form-grid" onSubmit={(e) => { e.preventDefault(); if (!Number(ap.usd)) return; d.set((s) => ({ aportes: [...s.aportes, { id: uid(), fecha: today(), usd: Number(ap.usd), nota: ap.nota || undefined, retiro: ap.retiro }] })); ui.notify(`${ap.retiro ? 'Retiro' : 'Aporte'} de ${usd(Number(ap.usd))} guardado`); setAp({ usd: '', nota: '', retiro: false }) }}>
-            <Field label="Monto (USD)" id="ap-u"><input id="ap-u" type="number" inputMode="decimal" value={ap.usd} onChange={(e) => setAp({ ...ap, usd: e.target.value })} /></Field>
+          <form className="form-grid" onSubmit={(e) => { e.preventDefault(); if (!(parseNum(ap.usd) ?? 0)) return; d.set((s) => ({ aportes: [...s.aportes, { id: uid(), fecha: today(), usd: (parseNum(ap.usd) ?? 0), nota: ap.nota || undefined, retiro: ap.retiro }] })); ui.notify(`${ap.retiro ? 'Retiro' : 'Aporte'} de ${usd((parseNum(ap.usd) ?? 0))} guardado`); setAp({ usd: '', nota: '', retiro: false }) }}>
+            <Field label="Monto (USD)" id="ap-u"><NumInput id="ap-u" value={ap.usd} onValue={(_, raw) => setAp({ ...ap, usd: raw })} /></Field>
             <Field label="Nota" id="ap-n"><input id="ap-n" value={ap.nota} onChange={(e) => setAp({ ...ap, nota: e.target.value })} /></Field>
             <div className="field"><label>Tipo</label><Seg label="Tipo" value={ap.retiro ? 'r' : 'a'} onChange={(v) => setAp({ ...ap, retiro: v === 'r' })} options={[['a', 'Aporte'], ['r', 'Retiro']]} /></div>
-            <button className="btn btn-quiet" disabled={!Number(ap.usd)}>Guardar</button>
+            <button className="btn btn-quiet" disabled={!(parseNum(ap.usd) ?? 0)}>Guardar</button>
           </form>
           {d.aportes.slice(-6).reverse().map((a) => <div className="list-row" key={a.id}><span className="grow">{a.retiro ? 'Retiro' : 'Aporte'}{a.nota ? ` · ${a.nota}` : ''}<span className="cap"> · {fmtShort(a.fecha)}</span></span><span className="k">{a.retiro ? '−' : '+'}{usd(a.usd)}</span><button className="icon-btn sm" aria-label="Borrar" onClick={() => d.set((s) => ({ aportes: s.aportes.filter((x) => x.id !== a.id) }))}><Icon name="trash" size={15} /></button></div>)}
           <p className="cap" style={{ marginTop: 8 }}>Los aportes no cuentan como rendimiento: así el porcentaje del portafolio mide solo lo que ganó la inversión.</p>

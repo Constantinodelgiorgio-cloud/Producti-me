@@ -51,6 +51,9 @@ const TILES: { icon: string; n: string; s: string; go?: [Route, string?]; act?: 
   { icon: 'message-circle', n: 'Contacto', s: 'Amigos', go: ['vida', 'amigos'], tone: 'vida' },
   { icon: 'feather', n: 'Diario', s: 'Escribir', go: ['vida', 'diario'], tone: 'vida' },
   { icon: 'sun', n: 'Check-in', s: 'Mañana o noche', act: 'checkin', tone: 'hoy' },
+  { icon: 'wind', n: 'Respirar', s: '1 a 5 min', go: ['cuerpo', 'respirar'], tone: 'cuerpo' },
+  { icon: 'stretch', n: 'Estirar', s: 'Rutina guiada', go: ['cuerpo', 'estirar'], tone: 'cuerpo' },
+  { icon: 'footprints', n: 'Pasos o cardio', s: 'Movimiento suave', go: ['cuerpo', 'moverse'], tone: 'cuerpo' },
   { icon: 'sparkles', n: 'Coach', s: 'Contale algo', go: ['coach'], tone: 'coach' },
 ]
 

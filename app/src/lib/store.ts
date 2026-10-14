@@ -3,7 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'
 import type {
   Alimento, Aporte, BodyEntry, CareLog, Cambio, Chat, CheckIn, ComidaGuardada, Exam, Habit, HabitState, Idea, JournalEntry, Meal, MoneyMove,
-  Pendiente, Penalty, Photo, PlanDia, Posicion, Profile, Review, Reward, Ruta, Sancion, Settings, Snapshot, SocialLog, StudySession, Subject, Workout,
+  Pendiente, Penalty, Photo, PlanDia, Posicion, Profile, Review, Reward, Ruta, Sancion, SesionCuerpo, Settings, Snapshot, SocialLog, StudySession, Subject, Workout,
 } from './types'
 import { HABITS, PROFILE, RUTAS, SUBJECTS } from './seed'
 import { today } from './date'
@@ -56,6 +56,9 @@ export interface Data {
   aportes: Aporte[]
   correo: { ultima?: string; vistos: string[]; error?: string }
   rutas: Ruta[]
+  // ---- v3 ----
+  cuerpo: SesionCuerpo[]
+  pasos: Record<string, number> // fecha → pasos
 }
 
 export const initialData = (): Data => ({
@@ -101,6 +104,8 @@ export const initialData = (): Data => ({
   aportes: [],
   correo: { vistos: [] },
   rutas: RUTAS,
+  cuerpo: [],
+  pasos: {},
 })
 
 export const BACKUP_KEY = 'producti-me-respaldo-v1'
@@ -130,12 +135,29 @@ export const migrateV1 = (old: Record<string, unknown>): Partial<Data> => {
   }
 }
 
-let backupDone = false
-const backupOnce = async (raw: unknown) => {
-  if (backupDone) return
-  backupDone = true
-  try { if (!(await idbGet(BACKUP_KEY))) await idbSet(BACKUP_KEY, JSON.stringify(raw)) } catch { /* sin almacenamiento */ }
+const backups = new Set<string>()
+const backupOnce = async (raw: unknown, key = BACKUP_KEY) => {
+  if (backups.has(key)) return
+  backups.add(key)
+  try { if (!(await idbGet(key))) await idbSet(key, JSON.stringify(raw)) } catch { /* sin almacenamiento */ }
 }
+export const BACKUP_KEY_V2 = 'producti-me-respaldo-v2'
+
+/**
+ * Empezar de cero desde hoy: hoy pasa a ser el día 1. No borra registros (comidas, gastos,
+ * estudio, diario, entrenamientos): XP, medallas y castigos solo cuentan desde `inicio`.
+ * Se descartan los castigos, sanciones y permitidos generados antes, que venían de días sin uso real.
+ */
+export const reiniciarDias = (d: Partial<Data>, desde = today()): Partial<Data> => ({
+  ...d,
+  inicio: desde,
+  penalties: (d.penalties ?? []).filter((p) => p.fecha >= desde && p.hecho),
+  sanciones: [],
+  rewards: (d.rewards ?? []).filter((r) => r.fecha >= desde),
+  xpAdjust: (d.xpAdjust ?? []).filter((x) => x.fecha >= desde),
+  // Se conservan los hitos de grasa ya otorgados para no volver a generarlos.
+  processed: (d.processed ?? []).filter((k) => k.startsWith('fat:')),
+})
 
 type Updater = (d: Data) => Partial<Data>
 interface Store extends Data {
@@ -152,11 +174,13 @@ export const useStore = create<Store>()(
     }),
     {
       name: 'producti-me',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => idbStorage),
       migrate: async (persisted, version) => {
-        const p = persisted as Record<string, unknown>
-        if (version < 2) { await backupOnce(p); return migrateV1(p) as unknown as Store }
+        let p = persisted as Record<string, unknown>
+        if (version < 2) { await backupOnce(p); p = migrateV1(p) as Record<string, unknown> }
+        // v3: el usuario pidió empezar de cero los días a partir de la versión 3 (con copia previa).
+        if (version < 3) { await backupOnce(p, BACKUP_KEY_V2); p = reiniciarDias(p as Partial<Data>) as Record<string, unknown> }
         return p as unknown as Store
       },
       partialize: (s) => {

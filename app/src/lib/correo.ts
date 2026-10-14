@@ -4,7 +4,7 @@ import { CATS_GASTO, CATS_INGRESO } from './seed'
 import type { CuentaId, MoneyMove, Pendiente } from './types'
 
 // Correos de pagos (Mercado Pago, Santander, Visa) que expone el script de Google del usuario
-// (ver integraciones/gmail-finanzas.gs). La app los lee al abrirse y cada 10 minutos.
+// (ver integraciones/producti-me.gs). La app los lee al abrirse y cada 10 minutos.
 
 export interface Correo { id: string; fecha: string; de: string; asunto: string; texto: string }
 
@@ -83,8 +83,8 @@ export const syncCorreo = async (): Promise<{ nuevos: number; pendientes: number
       const p = parseCorreo(c)
       if (!p) { dudosos.push(c); continue }
       const { confianza, ...mv } = p
-      if (correoAuto && confianza === 'alta') moves.push({ id: uid(), ...mv })
-      else pend.push({ id: uid(), ...mv, fuente: `Correo: ${c.asunto}`, confianza })
+      if (correoAuto && confianza === 'alta') moves.push({ id: `mail-${c.id}`, ...mv })
+      else pend.push({ id: `mail-${c.id}`, ...mv, fuente: `Correo: ${c.asunto}`, confianza })
     }
     // Lo que los patrones no entienden lo lee la IA (si hay clave); queda siempre para confirmar.
     if (dudosos.length && apiKey) {

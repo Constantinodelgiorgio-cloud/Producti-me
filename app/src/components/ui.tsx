@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import type { Note } from '../lib/logic'
 import type { Medal as MedalT } from '../lib/types'
 import { MEDAL_LABEL } from '../lib/logic'
@@ -7,7 +7,7 @@ import { useUI, type Route } from '../lib/ui'
 
 export const Card = ({ title, right, children, className = '', icon }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; icon?: string }) => (
   <section className={`panel pad ${className}`}>
-    {title && <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2">{icon && <Icon name={icon} size={16} />}{title}</h2>{right}</div>}
+    {title && <div className="sec" style={{ margin: '0 0 16px' }}><h2 className="h2">{icon && <Icon name={icon} size={16} />}{title}</h2>{right}</div>}
     {children}
   </section>
 )
@@ -128,4 +128,33 @@ export const VoiceText = ({ value, onChange, placeholder, lang = 'es', rows, id,
       </div>
     </div>
   )
+}
+
+/** Convierte "8,7", "8.7" o "1.250,5" en número; vacío o inválido → undefined. */
+export const parseNum = (s: string): number | undefined => {
+  let t = s.trim().replace(/\s/g, '')
+  if (!t) return undefined
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.') // coma decimal: los puntos son de miles
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '') // 1.250 → 1250
+  const n = Number(t)
+  return Number.isFinite(n) ? n : undefined
+}
+const fmtNum = (v: number | string | undefined) => (typeof v === 'string' ? v : v === undefined || !Number.isFinite(v) ? '' : String(v).replace('.', ','))
+const valNum = (v: number | string | undefined) => (typeof v === 'string' ? parseNum(v) : v)
+
+/**
+ * Campo numérico que acepta decimales con coma o punto (el teclado del iPhone en español usa coma,
+ * y <input type="number"> la rechaza). Guarda el texto mientras se escribe para no perder "8,".
+ */
+export const NumInput = ({ value, onValue, decimals = true, ...rest }: { value: number | string | undefined; onValue: (n: number | undefined, raw: string) => void; decimals?: boolean } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type' | 'inputMode'>) => {
+  const [raw, setRaw] = useState(fmtNum(value))
+  useEffect(() => {
+    if (parseNum(raw) !== valNum(value)) setRaw(fmtNum(value))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+  return <input {...rest} type="text" inputMode={decimals ? 'decimal' : 'numeric'} autoComplete="off" value={raw} onChange={(e) => {
+    const r = e.target.value.replace(decimals ? /[^\d.,]/g : /\D/g, '')
+    setRaw(r)
+    onValue(parseNum(r), r)
+  }} />
 }

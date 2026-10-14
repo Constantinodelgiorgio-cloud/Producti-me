@@ -1,6 +1,6 @@
 import type { Data } from './store'
 import type { AgendaItem, AreaId, Habit, Medal, Momento, Penalty, Snapshot } from './types'
-import { addDays, diffDays, dow, iso, today, weekDays, weekStart, uid } from './date'
+import { addDays, diffDays, dow, iso, today, weekDays, weekStart } from './date'
 import { AREAS, PENALTIES } from './seed'
 
 // ---------- Hábitos y medallas ----------
@@ -89,6 +89,9 @@ export const sessionXp = (s: { minutos: number; tipo: string; evidencia?: { veri
   return Math.round(s.minutos / 3) + (s.evidencia.verificado ? 40 : 25)
 }
 export const XP_TEST = { aprobado: 150, intento: 20 }
+/** Recuperación: poco XP, pero constante (respirar 5 min vale lo mismo que un vaso de agua más). */
+export const cuerpoXp = (c: { tipo: string; minutos: number }) =>
+  c.tipo === 'cardio' || c.tipo === 'caminata' ? Math.min(30, Math.round(c.minutos / 3)) : Math.min(15, 5 + Math.round(c.minutos / 2))
 
 /** Fechas (locales) cubiertas por sanciones: en esos días no se gana XP. */
 export const bannedDays = (d: Pick<Data, 'sanciones'>) => {
@@ -105,7 +108,8 @@ export const sancionActiva = (d: Pick<Data, 'sanciones'>, now = Date.now()) =>
 
 export const totalXp = (d: Data) => {
   const ban = bannedDays(d)
-  const ok = (f: string) => !ban.has(f)
+  // Solo cuenta desde el día 1 (inicio) y fuera de los días sancionados.
+  const ok = (f: string) => f >= d.inicio && !ban.has(f)
   let xp = 0
   for (const [f, log] of Object.entries(d.habitLog)) {
     if (!ok(f)) continue
@@ -127,9 +131,11 @@ export const totalXp = (d: Data) => {
   xp += d.study.filter((s) => ok(s.fecha)).reduce((a, s) => a + sessionXp(s), 0)
   xp += d.journal.filter((j) => ok(j.fecha)).reduce((a, j) => a + (j.modo && j.modo !== 'libre' ? 15 : 10), 0)
   xp += d.social.filter((s) => ok(s.fecha)).reduce((a, s) => a + (s.tipo === 'juntada' ? 40 : 15), 0)
-  xp += d.penalties.filter((p) => p.hecho).length * 20
+  xp += d.penalties.filter((p) => p.hecho && ok(p.fecha)).length * 20
+  xp += (d.cuerpo ?? []).filter((c) => ok(c.fecha)).reduce((a, c) => a + cuerpoXp(c), 0)
+  xp += Object.entries(d.pasos ?? {}).filter(([f, n]) => ok(f) && n >= (d.profile.pasosObjetivo ?? 8000)).length * 10
   for (const r of d.rutas ?? []) for (const m of r.metas) if (m.test && ok(m.test.fecha)) xp += m.test.aprobado ? XP_TEST.aprobado : XP_TEST.intento
-  xp += d.xpAdjust.reduce((a, x) => a + x.xp, 0)
+  xp += d.xpAdjust.filter((x) => x.fecha >= d.inicio).reduce((a, x) => a + x.xp, 0)
   return Math.max(0, Math.round(xp))
 }
 
@@ -157,9 +163,10 @@ export const levelInfo = (xp: number) => {
 const pick = <T,>(arr: T[], seed: string) => arr[[...seed].reduce((a, c) => a + c.charCodeAt(0), 0) % arr.length]
 export const PENALTY_HOURS = 48
 export const SANCION_HOURS = 72
-const nuevoCastigo = (motivo: string, tarea: string): Penalty => {
+/** El id sale de la regla que lo generó: si dos dispositivos lo generan, la sincronización lo une en uno. */
+const nuevoCastigo = (clave: string, motivo: string, tarea: string): Penalty => {
   const now = Date.now()
-  return { id: uid(), fecha: today(), motivo, tarea, hecho: false, creado: new Date(now).toISOString(), vence: new Date(now + PENALTY_HOURS * 3600e3).toISOString() }
+  return { id: `pen-${clave}`, fecha: today(), motivo, tarea, hecho: false, creado: new Date(now).toISOString(), vence: new Date(now + PENALTY_HOURS * 3600e3).toISOString() }
 }
 /** Tiempo restante de un castigo: fracción 0–1 que queda y si venció. */
 export const penaltyTime = (p: Penalty, now = Date.now()) => {
@@ -192,11 +199,12 @@ export const processRules = (d: Data): Partial<Data> | null => {
     const p = penalties[i]
     if (p.hecho || p.sancionado || !penaltyTime(p).vencido) continue
     const desde = new Date(p.vence!).getTime()
-    sanciones.push({ id: uid(), desde: new Date(desde).toISOString(), hasta: new Date(desde + SANCION_HOURS * 3600e3).toISOString(), motivo: `Venció: ${p.tarea}` })
+    sanciones.push({ id: `san-${p.id}`, desde: new Date(desde).toISOString(), hasta: new Date(desde + SANCION_HOURS * 3600e3).toISOString(), motivo: `Venció: ${p.tarea}` })
     penalties[i] = { ...p, sancionado: true }
     tocado = true
   }
-  const firstDay = Object.keys(d.habitLog).sort()[0]
+  // Las reglas evalúan solo días desde el día 1 en que ya se marcó algo.
+  const firstDay = Object.keys(d.habitLog).filter((f) => f >= d.inicio).sort()[0]
   if (!firstDay) return tocado ? { penalties, sanciones } : null
 
   // Día flojo: ayer con menos del 50 % de hábitos.
@@ -206,7 +214,7 @@ export const processRules = (d: Data): Partial<Data> | null => {
     processed.add(kDay)
     const c = compliance(d, [ayer])
     if (c !== null && c < 0.5) {
-      penalties.push(nuevoCastigo(`Ayer cumpliste ${Math.round(c * 100)} % de los hábitos`, pick(PENALTIES.general, ayer)))
+      penalties.push(nuevoCastigo(kDay, `Ayer cumpliste ${Math.round(c * 100)} % de los hábitos`, pick(PENALTIES.general, ayer)))
     }
   }
 
@@ -216,12 +224,12 @@ export const processRules = (d: Data): Partial<Data> | null => {
   if (addDays(prevWeek, 6) >= firstDay && !processed.has(kWeek)) {
     processed.add(kWeek)
     const wm = weekMedals(d, prevWeek, addDays(prevWeek, 6))
-    if (wm.globalMedal === 'oro') rewards.push({ id: uid(), fecha: t, motivo: 'Semana de Oro', premio: 'Hamburguesa (permitido)', usado: false })
+    if (wm.globalMedal === 'oro') rewards.push({ id: `rew-${kWeek}`, fecha: t, motivo: 'Semana de Oro', premio: 'Hamburguesa (permitido)', usado: false })
     if (wm.globalMedal === 'malo') xpAdjust.push({ fecha: t, xp: -150, motivo: 'Semana mala: −150 XP' })
     for (const [area, v] of Object.entries(wm.areas)) {
       if (v?.m !== 'malo') continue
       const lista = area === 'fisico' ? PENALTIES.fisico : area === 'estudio' ? PENALTIES.estudio : PENALTIES.general
-      penalties.push(nuevoCastigo(`Semana mala en ${AREAS.find((a) => a.id === area)?.nombre}`, pick(lista, prevWeek + area)))
+      penalties.push(nuevoCastigo(`${kWeek}:${area}`, `Semana mala en ${AREAS.find((a) => a.id === area)?.nombre}`, pick(lista, prevWeek + area)))
     }
   }
 
@@ -233,7 +241,7 @@ export const processRules = (d: Data): Partial<Data> | null => {
       const k = `fat:${i}`
       if (!processed.has(k)) {
         processed.add(k)
-        rewards.push({ id: uid(), fecha: t, motivo: `−${i} % de grasa corporal`, premio: 'Hamburguesa (permitido)', usado: false })
+        rewards.push({ id: `rew-${k}`, fecha: t, motivo: `−${i} % de grasa corporal`, premio: 'Hamburguesa (permitido)', usado: false })
       }
     }
   }
@@ -405,11 +413,111 @@ export const momentoDe = (h: Habit, d?: Pick<Data, 'planDia'>, fecha?: string): 
 }
 export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
 export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
-/** Próximo bloque de la agenda de hoy (o el que está en curso, hasta 60 min). */
+/** Bloque de la agenda de hoy en curso (según su duración) o, si no hay, el próximo. */
 export const agendaAhora = (d: Data) => {
   const items = agendaDe(d, today())
   const n = nowMin()
-  const next = items.find((a) => toMin(a.hora) >= n - 60 && toMin(a.hora) + 60 > n) ?? items.find((a) => toMin(a.hora) > n)
-  return next ? { ...next, faltan: toMin(next.hora) - n } : null
+  const cur = items.find((a) => toMin(a.hora) <= n && toMin(a.hora) + duracionBloque(a) > n)
+  const next = cur ?? items.find((a) => toMin(a.hora) > n)
+  return next ? { ...next, faltan: toMin(next.hora) - n, fin: toMin(next.hora) + duracionBloque(next) } : null
 }
 export const hourFmt = (min: number) => `${String(Math.floor(((min % 1440) + 1440) % 1440 / 60)).padStart(2, '0')}:${String(((min % 60) + 60) % 60).padStart(2, '0')}`
+
+// ---------- Agenda del día: bloques con duración y hábitos ubicados en los huecos ----------
+/** Duración estimada de un bloque de agenda a partir de su texto ("hasta 9:00", "1:30–2 h"). */
+export const duracionBloque = (a: AgendaItem): number => {
+  const hasta = a.que.match(/hasta (\d{1,2})[:.](\d{2})/)
+  if (hasta) return Math.max(15, toMin(`${hasta[1].padStart(2, '0')}:${hasta[2]}`) - toMin(a.hora))
+  const rango = a.que.match(/(\d)[:.](\d{2})\s*[–-]\s*(\d)\s*h/)
+  if (rango) return Number(rango[1]) * 60 + Number(rango[2])
+  const horas = a.que.match(/(\d+(?:[.,]\d+)?)\s*h\b/)
+  if (horas) return Math.round(Number(horas[1].replace(',', '.')) * 60)
+  if (/partido/i.test(a.que)) return 240
+  if (/almuerzo|cena/i.test(a.que)) return /siesta/i.test(a.que) ? 75 : 45
+  if (/rugby|entrenamiento/i.test(a.que)) return 120
+  if (/gimnasio/i.test(a.que)) return 90
+  if (/revisi/i.test(a.que)) return 20
+  return 60
+}
+/** Minutos que lleva un hábito ("Inglés 20 min", "IA 60 min"); 0 = no ocupa un horario. */
+export const duracionHabito = (h: Habit): number => {
+  const n = h.nombre.toLowerCase()
+  if (/agua|proteína|registrar todas|outfit|escribirle|proponer|fuera de la rutina|dormir|celular/.test(n)) return 0
+  const m = n.match(/(\d+)\s*min/)
+  if (m) return Number(m[1])
+  const hs = n.match(/(\d+)\s*h\b/)
+  if (hs) return Number(hs[1]) * 60
+  if (/bloque|marmoler/.test(n)) return 60
+  if (/clindamicina|skincare|portafolio/.test(n)) return 5
+  if (/manos/.test(n)) return 15
+  return 10
+}
+
+export interface SlotHabitos { ini: number; fin: number; habitos: Habit[]; titulo?: string }
+export interface PlanBloque { ini: number; fin: number; item: AgendaItem; habitos: Habit[] }
+export interface PlanDelDia { bloques: PlanBloque[]; slots: SlotHabitos[]; sinHora: Habit[]; dormir?: Habit[] }
+
+/**
+ * Arma el día real: los bloques fijos de la agenda con su duración, cada hábito con horario
+ * en un hueco libre de su momento (mañana, tarde, noche) y aparte lo que no tiene hora
+ * (agua, proteína, escribirle a alguien). Las rutinas cortas consecutivas se agrupan.
+ */
+export const planDelDia = (d: Data, f: string, wake: number, bed: number): PlanDelDia => {
+  const hs = habitsFor(d.habits, f)
+  const bloques: PlanBloque[] = agendaDe(d, f).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), item: a, habitos: [] }))
+  const ocupado: [number, number][] = bloques.map((b) => [b.ini, b.fin])
+  const sinHora: Habit[] = []
+  const dormir: Habit[] = []
+  const conHora: { h: Habit; min: number; dur: number }[] = []
+  const pend: { h: Habit; dur: number; m: Momento }[] = []
+  for (const h of hs) {
+    const n = h.nombre.toLowerCase()
+    if (/entren/.test(n)) {
+      const b = bloques.find((x) => /gimnasio|rugby|partido|entren/i.test(x.item.que))
+      if (b) { b.habitos.push(h); continue }
+    }
+    if (/marmoler/.test(n)) {
+      const b = bloques.find((x) => /marmoler/i.test(x.item.que))
+      if (b) { b.habitos.push(h); continue }
+    }
+    if (/dormir|celular/.test(n)) { dormir.push(h); continue }
+    if (h.hora) { conHora.push({ h, min: toMin(h.hora), dur: Math.max(10, duracionHabito(h)) }); continue }
+    const dur = duracionHabito(h)
+    if (!dur) { sinHora.push(h); continue }
+    pend.push({ h, dur, m: momentoDe(h, d, f) })
+  }
+  for (const c of conHora) ocupado.push([c.min, c.min + c.dur])
+  const libreDesde = (desde: number, dur: number, hasta: number) => {
+    let t = desde
+    for (let i = 0; i < 40; i++) {
+      const choque = ocupado.find(([a, b]) => t < b && t + dur > a)
+      if (!choque) return t + dur <= hasta ? t : null
+      t = choque[1] + 5
+    }
+    return null
+  }
+  const lastFin = Math.max(wake, ...bloques.filter((b) => b.ini < bed).map((b) => b.fin))
+  const ventanas: Record<Momento, number> = { manana: wake + 10, dia: Math.max(wake + 60, 9 * 60), tarde: 13 * 60, noche: Math.max(lastFin + 15, bed - 90) }
+  const orden: Momento[] = ['manana', 'tarde', 'dia', 'noche']
+  const ubicados: { h: Habit; min: number; dur: number }[] = [...conHora]
+  for (const m of orden) {
+    for (const p of pend.filter((x) => x.m === m).sort((a, b) => b.dur - a.dur)) {
+      const inicio = m === 'noche' ? ventanas.noche : ventanas[m]
+      const t = libreDesde(inicio, p.dur, bed) ?? libreDesde(wake, p.dur, bed)
+      if (t === null) { sinHora.push(p.h); continue }
+      ocupado.push([t, t + p.dur])
+      ubicados.push({ h: p.h, min: t, dur: p.dur })
+    }
+  }
+  ubicados.sort((a, b) => a.min - b.min)
+  // Rutinas cortas pegadas (≤ 15 min cada una) se muestran juntas, con su horario real.
+  const slots: SlotHabitos[] = []
+  for (const u of ubicados) {
+    const prev = slots.at(-1)
+    if (prev && u.dur <= 15 && prev.habitos.every((h) => duracionHabito(h) <= 15) && u.min - prev.fin <= 5) {
+      prev.habitos.push(u.h); prev.fin = Math.max(prev.fin, u.min + u.dur)
+    } else slots.push({ ini: u.min, fin: u.min + u.dur, habitos: [u.h] })
+  }
+  for (const s of slots) if (s.habitos.length > 1) s.titulo = s.ini < 12 * 60 ? 'Rutina de la mañana' : s.ini >= 20 * 60 ? 'Rutina de la noche' : 'Rutina corta'
+  return { bloques, slots, sinHora, dormir }
+}

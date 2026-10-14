@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0C0E13"/><stop offset=".62" stop-color="#090A0D"/><stop offset="1" stop-color="#050607"/>
+    </linearGradient>
+    <radialGradient id="sky" cx="512" cy="600" r="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8EA8FF" stop-opacity=".38"/><stop offset=".45" stop-color="#5C6FB8" stop-opacity=".10"/><stop offset="1" stop-color="#0C0E13" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="152" y1="0" x2="872" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8EA8FF" stop-opacity="0"/><stop offset=".3" stop-color="#8EA8FF" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#F2F5FF"/><stop offset=".7" stop-color="#8EA8FF" stop-opacity=".55"/><stop offset="1" stop-color="#8EA8FF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="512" cy="572" r="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset=".3" stop-color="#E8EDFF"/><stop offset=".312" stop-color="#C3D0FF" stop-opacity=".42"/><stop offset="1" stop-color="#8EA8FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11141B"/><stop offset=".25" stop-color="#07080B"/><stop offset="1" stop-color="#050607"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+  <g transform="translate(0 -34)">
+  <!-- sol saliendo: la mitad inferior queda detrás del horizonte -->
+  <circle cx="512" cy="572" r="260" fill="url(#sun)"/>
+  <!-- planeta: solo se ve el borde, curvo, como un horizonte visto desde arriba -->
+  <circle cx="512" cy="1180" r="620" fill="url(#ground)"/>
+  <path d="M152 675.2 A620 620 0 0 1 872 675.2" fill="none" stroke="url(#rim)" stroke-width="34" stroke-opacity=".14" stroke-linecap="round"/>
+  <path d="M152 675.2 A620 620 0 0 1 872 675.2" fill="none" stroke="url(#rim)" stroke-width="12" stroke-linecap="round"/>
+  </g>
+</svg>

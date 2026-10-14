@@ -18,14 +18,14 @@ Gmail ──► Script de Google (en TU cuenta) ──► Producti-me (al abrirs
 ## Instalación (5 minutos, una sola vez)
 
 1. Entrá a [script.google.com](https://script.google.com) con tu Gmail → **Nuevo proyecto**.
-2. Borrá lo que haya y pegá el contenido de [`integraciones/gmail-finanzas.gs`](../integraciones/gmail-finanzas.gs).
+2. Borrá lo que haya y pegá el contenido de [`integraciones/producti-me.gs`](../integraciones/producti-me.gs) (el mismo script sirve para sincronizar tus dispositivos: ver [doc 14](14-sincronizacion.md)).
 3. Cambiá `CLAVE` por un texto largo (por ejemplo, 30 letras y números al azar). Guardá.
 4. Ejecutá la función **probar** (menú de arriba) → Google pide permiso para leer tu Gmail → **Permitir**. En el registro tienen que aparecer tus últimos pagos.
 5. **Implementar → Nueva implementación → Aplicación web**:
    - *Ejecutar como*: **Yo**.
    - *Quién tiene acceso*: **Cualquier usuario** (la clave es lo que protege; sin ella el script responde `unauthorized`).
 6. Copiá la URL que termina en `/exec`.
-7. En Producti-me → **Ajustes → Correo de pagos**: pegá la URL y la clave → **Probar y revisar ahora**.
+7. En Producti-me → **Ajustes → Conexión con Google**: pegá la URL y la clave → **Probar y revisar ahora**. Con el mismo script podés sincronizar tus dispositivos ([doc 14](14-sincronizacion.md)).
 
 ## Qué se anota solo y qué queda para confirmar
 

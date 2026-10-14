@@ -19,6 +19,8 @@ export interface Habit {
   momento?: Momento
   /** ícono elegido (nombre del mapa de Icon.tsx); si falta se deduce del nombre */
   icono?: string
+  /** hora fija en la agenda (HH:MM); si falta, la agenda le busca un hueco */
+  hora?: string
 }
 export type HabitState = 'hecho' | 'minimo' | 'no'
 
@@ -121,6 +123,9 @@ export interface Profile {
   despertar: string[]
   /** agenda base por día (0 = lunes) */
   agenda: { hora: string; que: string; intensidad?: Intensity }[][]
+  /** Cuerpo: pasos por día y minutos de cardio suave por semana */
+  pasosObjetivo?: number
+  cardioObjetivo?: number
 }
 
 export type Pinned = 'fisico' | 'estudio' | 'finanzas' | 'vida'
@@ -131,7 +136,13 @@ export interface Settings {
   correoUrl?: string; correoToken?: string; correoAuto?: boolean
   /** permite que el coach lea el texto del diario */
   coachLeeDiario?: boolean
+  /** sincronizar los datos entre dispositivos usando el mismo script de Google */
+  syncOn?: boolean
 }
+
+// ---------- Cuerpo: recuperación y movimiento suave ----------
+export type TipoCuerpo = 'respiracion' | 'estiramiento' | 'cardio' | 'caminata'
+export interface SesionCuerpo { id: string; fecha: string; tipo: TipoCuerpo; nombre: string; minutos: number; nota?: string; fc?: number }
 
 // ---------- Plan por día (lo que el Coach o vos cambian para una fecha puntual) ----------
 export interface AgendaItem { hora: string; que: string; intensidad?: Intensity }

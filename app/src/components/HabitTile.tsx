@@ -116,6 +116,11 @@ export const HabitSheet = () => {
           <button className={`opt ${st === 'no' ? 'on' : ''}`} onClick={() => mark('no')}><Icon name="minus" />No hecho</button>
           <button className="opt" onClick={() => setModo('excusa')}><Icon name="shield-alert" />Excusar</button>
         </div>
+        <div className="link-row as-field">
+          <Icon name="clock" size={16} /><label htmlFor="h-hora" className="grow">Hora fija en la agenda</label>
+          <input id="h-hora" type="time" value={h.hora ?? ''} onChange={(e) => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: e.target.value || undefined } : x) }))} />
+          {h.hora && <button className="btn btn-ghost btn-sm" onClick={() => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: undefined } : x) }))}>Automática</button>}
+        </div>
         <button className="link-row" onClick={() => setModo('icono')}><Icon name="grid" size={16} />Cambiar ícono<Icon name="chevron-right" size={16} /></button>
       </div>}
       {modo === 'excusa' && <div className="stack" style={{ gap: 14 }}>

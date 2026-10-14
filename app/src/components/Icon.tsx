@@ -6,7 +6,7 @@ import {
   TrendingUp, Trophy, Undo2, Upload, Users, Utensils, Wallet, X, Code, Banknote, Landmark, CreditCard, Drumstick, Fish, Egg, Milk, Wheat,
   Croissant, Bean, Carrot, Apple, CookingPot, Sandwich, CupSoda, Popcorn, Cake, Hourglass, Send, Link2, Image, FileText, Star, RefreshCw,
   Mail, Feather, LayoutDashboard, ShieldAlert, Zap, ArrowUp, ArrowLeft, Lock, CircleCheck, Inbox, Heart, Music, Film, Headphones, PenLine,
-  GraduationCap, Quote, BookMarked, Grid2x2, List, History, Eye, ChevronDown, Sparkle, Orbit, type LucideIcon,
+  GraduationCap, Quote, BookMarked, Grid2x2, List, History, Eye, ChevronDown, Sparkle, Orbit, Wind, Footprints, PersonStanding, Activity, Waves, Bike, Leaf, type LucideIcon,
 } from 'lucide-react'
 import type { Habit } from '../lib/types'
 import { AREAS } from '../lib/seed'
@@ -28,6 +28,7 @@ const MAP: Record<string, LucideIcon> = {
   'arrow-up': ArrowUp, 'arrow-left': ArrowLeft, lock: Lock, 'circle-check': CircleCheck, inbox: Inbox, heart: Heart, music: Music,
   film: Film, headphones: Headphones, 'pen-line': PenLine, 'graduation-cap': GraduationCap, quote: Quote, 'book-marked': BookMarked,
   grid: Grid2x2, list: List, history: History, eye: Eye, 'chevron-down': ChevronDown, sparkle: Sparkle, orbit: Orbit,
+  wind: Wind, footprints: Footprints, stretch: PersonStanding, activity: Activity, waves: Waves, bike: Bike, leaf: Leaf,
 }
 
 export const Icon = ({ name, size = 18, stroke = 1.75, className }: { name: string; size?: number; stroke?: number; className?: string }) => {

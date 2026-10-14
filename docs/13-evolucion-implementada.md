@@ -52,3 +52,18 @@
 - **Correos reales de Mercado Pago y Santander**: los patrones se escribieron sin muestras reales. Lo que no entiendan va a "Por confirmar" (o a la IA). Mandame un par de correos de ejemplo y los ajusto.
 - **Valores nutricionales**: son de referencia (ARGENFOODS y USDA, más recetas típicas para los platos). Revisá los que más comés y corregilos con un alimento propio si hace falta.
 - Notificaciones push y sincronización entre dispositivos siguen en la fase 2 (necesitan servidor).
+
+---
+
+## Versión 3 (revisión y correcciones)
+
+| Pedido | Qué se hizo |
+|---|---|
+| Empezar de cero los días | Migración v3: hoy pasa a ser el día 1. Nivel, XP, medallas y castigos cuentan desde ahí; se descartan castigos, sanciones y permitidos viejos. Los registros (comidas, gastos, estudio, diario) se conservan. Copia previa automática ("antes del día 1") en Ajustes → Tus datos. Botón **Empezar de cero desde hoy** para repetirlo. |
+| iPad y iPhone no compartían datos | Sincronización con el script de Google del usuario (archivo en su Drive), fusión de 3 vías (suma lo nuevo, respeta borrados), código de vínculo, opción manual "Combinar una copia". Ids determinísticos en castigos, premios y pagos de correo para no duplicar entre dispositivos. Ver [doc 14](14-sincronizacion.md). |
+| Línea de tiempo sin sentido ("15:00 · 8 actividades") | Bloques fijos con duración real (deducida del texto: "hasta 12:20", "1:30–2 h"), cada hábito con su propio horario en un hueco libre de su momento, rutinas cortas agrupadas con su rango real, "Entrenamiento" dentro del bloque del gimnasio, lo que no tiene hora (agua, proteína) aparte. Hora fija opcional por hábito. "Ahora" muestra el bloque en curso. |
+| Pestaña de cuerpo | Nueva sección **Cuerpo** (tono agua): 4 respiraciones guiadas con animación y sonido suave, 5 rutinas de estiramiento para gimnasio y rugby con temporizador por ejercicio, pasos diarios y cardio suave (zona 2). Sugerencia según la hora, la agenda y el check-in. Estirar marca solo el hábito de movilidad. |
+| Imperfecciones | Desbordes horizontales, punto suelto en tarjetas sin progreso, botones de enviar invisibles, casillas de Ajustes desalineadas, AE3/AE4 cortados, botones de formulario sueltos, cuenta "sin asignar" en Finanzas, columna de escritorio angosta. Botones y barras toman el color de cada sección. |
+| Más aire | Márgenes laterales 20 px, separación entre bloques 18 px, paneles con 20 px de relleno, filas más altas. |
+| Logo | Nuevo "Horizonte": un sol que sale sobre la curva de un horizonte. Archivos con nombres nuevos para que el navegador no use el viejo. |
+| Decimales en comida | Gramos y macros aceptan coma o punto (8,7 g). Mismo arreglo en montos, kg, peso, grasa y cintura. |

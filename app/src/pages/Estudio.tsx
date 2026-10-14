@@ -107,15 +107,15 @@ function Sesion() {
           {evTipo === 'foto' && <div className="row">{ev ? <img src={ev} alt="Evidencia" className="ev-thumb" /> : null}<label className="btn btn-quiet"><Icon name="camera" size={16} />{ev ? 'Cambiar foto' : 'Sacar o elegir foto'}<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pickFoto(e.target.files?.[0]); e.target.value = '' }} /></label></div>}
         </div>
       )}
-      <div className="row" style={{ marginTop: 14 }}>
+      <div className="sess-actions">
         {!running ? <button className="btn btn-primary" onClick={() => setRun(Date.now())}><Icon name="play" size={16} />Empezar</button>
           : <button className="btn btn-primary" disabled={checking} onClick={async () => { await save(Math.max(1, Math.round(elapsed / 60))); setRun(null) }}><Icon name="square" size={14} />{checking ? 'Verificando…' : 'Terminar y guardar'}</button>}
         {running && <button className="btn btn-ghost" onClick={() => setRun(null)}>Descartar</button>}
-        <span className="grow" />
-        <form className="row" style={{ flexWrap: 'nowrap' }} onSubmit={(e) => { e.preventDefault(); save(Number(manual)) }}>
-          <input aria-label="Minutos a cargar a mano" type="number" inputMode="numeric" style={{ width: 84 }} value={manual} onChange={(e) => setManual(e.target.value)} />
-          <button className="btn btn-quiet" disabled={checking}>Cargar min</button>
-        </form>
+        {!running && <form className="sess-manual" onSubmit={(e) => { e.preventDefault(); save(Number(manual)) }}>
+          <span className="cap">o cargá</span>
+          <input aria-label="Minutos a cargar a mano" type="number" inputMode="numeric" value={manual} onChange={(e) => setManual(e.target.value)} />
+          <button className="btn btn-quiet" disabled={checking}>min</button>
+        </form>}
       </div>
     </section>
   )
@@ -193,7 +193,7 @@ function NotaBox({ label, sub, value, onChange }: { label: string; sub: string; 
   const [bad, setBad] = useState(false)
   return (
     <label className={`ae-nota ${bad ? 'bad' : ''} ${value !== undefined ? (value >= 4 ? 'ok' : 'low') : ''}`}>
-      <span className="ae-k">{label}{sub && <small> {sub}</small>}</span>
+      <span className="ae-k">{label}</span>{sub && <small className="ae-sub">{sub}</small>}
       <input inputMode="decimal" aria-label={`${label}: nota de 1 a 10`} placeholder="—" value={v} onChange={(e) => { setV(e.target.value); const n = notaOk(e.target.value); setBad(n === null); if (n !== null) onChange(n) }} />
     </label>
   )

@@ -1,18 +1,18 @@
 import { create } from 'zustand'
 
 // Estado de interfaz (no se guarda): ruta, hojas, avisos y confirmaciones.
-export type Route = 'hoy' | 'habitos' | 'comida' | 'fisico' | 'estudio' | 'finanzas' | 'vida' | 'revision' | 'ajustes' | 'coach' | 'areas'
+export type Route = 'hoy' | 'habitos' | 'comida' | 'fisico' | 'estudio' | 'finanzas' | 'vida' | 'revision' | 'ajustes' | 'coach' | 'areas' | 'cuerpo'
 export type SheetKind = 'registrar' | 'mas' | 'checkin-manana' | 'checkin-noche' | 'confirm' | 'castigo' | 'habito' | null
 
 /** Sección visual de cada pantalla: define el tono ambiental (ver styles.css, [data-section]). */
 export const SECTION: Record<Route, string> = {
   hoy: 'hoy', habitos: 'hoy', revision: 'hoy', areas: 'areas', coach: 'coach', ajustes: 'coach',
-  fisico: 'fisico', comida: 'fisico', estudio: 'estudio', finanzas: 'finanzas', vida: 'vida',
+  fisico: 'fisico', comida: 'fisico', estudio: 'estudio', finanzas: 'finanzas', vida: 'vida', cuerpo: 'cuerpo',
 }
 export const ROUTE_INFO: Record<Route, [string, string]> = {
   hoy: ['Hoy', 'house'], habitos: ['Hábitos', 'list-checks'], coach: ['Coach', 'sparkles'], areas: ['Áreas', 'areas'], fisico: ['Físico', 'dumbbell'],
   comida: ['Comida', 'utensils'], estudio: ['Estudio', 'book-open'], finanzas: ['Finanzas', 'wallet'], vida: ['Vida', 'users'],
-  revision: ['Revisión semanal', 'calendar-check'], ajustes: ['Ajustes', 'settings'],
+  revision: ['Revisión semanal', 'calendar-check'], ajustes: ['Ajustes', 'settings'], cuerpo: ['Cuerpo', 'wind'],
 }
 
 interface Toast { id: number; text: string; undo?: () => void; tone?: 'ok' | 'neutral' }
@@ -39,7 +39,7 @@ interface UI {
   confirm: (c: Omit<Confirm, 'resolve'>) => Promise<boolean>
 }
 
-const ROUTES: Route[] = ['hoy', 'habitos', 'comida', 'fisico', 'estudio', 'finanzas', 'vida', 'revision', 'ajustes', 'coach', 'areas']
+const ROUTES: Route[] = ['hoy', 'habitos', 'comida', 'fisico', 'estudio', 'finanzas', 'vida', 'revision', 'ajustes', 'coach', 'areas', 'cuerpo']
 export const parseHash = (): { route: Route; sub?: string } => {
   const [r, sub] = location.hash.slice(1).split('/')
   return ROUTES.includes(r as Route) ? { route: r as Route, sub } : { route: 'hoy' }
