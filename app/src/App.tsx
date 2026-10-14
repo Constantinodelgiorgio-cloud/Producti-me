@@ -84,6 +84,7 @@ function Shell() {
   const xp = useStore((s) => totalXp(s))
   const pend = useStore((s) => castigosPendientes(s).length)
   const san = useStore((s) => sancionActiva(s))
+  const areasOff = useStore((s) => s.settings.areasOff)
   const L = levelInfo(xp)
   const scroll = useRef<HTMLDivElement>(null)
   const [compact, setCompact] = useState(false)
@@ -132,7 +133,7 @@ function Shell() {
       <nav className="side" aria-label="Navegación principal">
         <div className="brand"><Logo size={28} /><b>PRODUCTI-ME</b></div>
         <button className="side-cta" onClick={() => ui.openSheet('registrar')}><Icon name="plus" />Registrar<span className="kbd end">R</span></button>
-        {SIDE.map(([k, key]) => (
+        {SIDE.filter(([k]) => !(areasOff ?? []).includes(k)).map(([k, key]) => (
           <button key={k} className="side-btn" data-s={SECTION[k]} aria-current={route === k || (k === 'fisico' && route === 'comida') ? 'page' : undefined} onClick={() => ui.go(k)}>
             <Icon name={ROUTE_INFO[k][1]} />{ROUTE_INFO[k][0]}{k === 'hoy' && pend > 0 && <span className="badge">{pend}</span>}<span className="kbd end">{key}</span>
           </button>

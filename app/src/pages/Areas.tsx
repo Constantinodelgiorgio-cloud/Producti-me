@@ -39,7 +39,7 @@ export default function Areas() {
     <div className="view">
       <header className="top"><div><div className="eyebrow">Tu vida por áreas</div><h1 className="h1 display">Áreas</h1></div></header>
       <div className="area-grid">
-        {cards.map((c) => (
+        {cards.filter((c) => !(d.settings.areasOff ?? []).includes(c.r)).map((c) => (
           <button key={c.r} className={`area-card ${c.wide ? 'wide' : ''}`} data-s={c.s} onClick={() => ui.go(c.r)} style={{ ['--p' as string]: c.p }}>
             <span className="ac-top"><span className="ac-ic"><Icon name={c.icon} size={20} /></span><span className="ac-name">{c.name}</span><Icon name="arrow-right" size={16} className="ac-go" /></span>
             <span className="ac-val"><span className="val-l">{c.big}</span><span className="unit">{c.unit}</span></span>

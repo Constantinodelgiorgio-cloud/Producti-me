@@ -50,7 +50,7 @@ export const TareasHoy = () => {
   }
   return (
     <section className="tareas">
-      <div className="sec" style={{ margin: '4px 2px 10px' }}><span className="eyebrow">Tareas de hoy</span><span className="cap num">{hechas.length}/{hechas.length + list.length}</span></div>
+      <div className="sec" style={{ margin: '4px 2px 10px' }}><span className="eyebrow">Tareas de hoy</span>{hechas.length + list.length > 0 && <span className="cap num">{hechas.length}/{hechas.length + list.length}</span>}</div>
       <div className="panel tareas-list">
         {list.map((t) => (
           <div key={t.id} className={`tarea ${t.dificil ? 'dificil' : ''}`}>
@@ -63,7 +63,7 @@ export const TareasHoy = () => {
           <div key={t.id} className="tarea done"><CheckBox on label={`Desmarcar: ${t.texto}`} onClick={() => toggle(t)} /><span className="grow tt">{t.texto}</span></div>
         ))}
         <form className="tarea-add" onSubmit={(e) => { e.preventDefault(); add() }}>
-          <input aria-label="Nueva tarea para hoy" placeholder="Agregar una tarea para hoy…" value={txt} onChange={(e) => setTxt(e.target.value)} />
+           <input aria-label="Nueva tarea para hoy" placeholder="Nueva tarea…" value={txt} onChange={(e) => setTxt(e.target.value)} />
           <select aria-label="Minutos estimados" value={min ?? ''} onChange={(e) => setMin(Number(e.target.value) || undefined)}>{[15, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{fmtMin(m)}</option>)}</select>
           <button className="btn btn-quiet btn-sm" disabled={!txt.trim()}><Icon name="plus" size={15} /></button>
         </form>

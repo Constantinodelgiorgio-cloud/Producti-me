@@ -8,6 +8,7 @@
  *      para que la app anote los pagos.
  *   3. Recibe pasos, sueño y pulsaciones que manda Atajos de iOS desde la app Salud.
  *   4. Sirve un resumen del día para el widget de la pantalla de inicio (Scriptable).
+ *   5. Sirve un calendario (.ics) con avisos para suscribirlo en el iPhone: avisa aunque la app esté cerrada.
  * Nada pasa por servidores de terceros.
  *
  * Instalación: docs/14-sincronizacion.md · correo: docs/12 · Salud y widget: docs/15.
@@ -30,6 +31,7 @@ function doGet(e) {
   if (p.accion === 'salud') return json({ salud: saludDesde(p.desde || '') });
   if (p.accion === 'anotar') return json(anotarSalud(p));
   if (p.accion === 'widget') return json(widget());
+  if (p.accion === 'ics') return ics();
   return json({ mensajes: correos(Number(p.desde || 0)) });
 }
 
@@ -144,6 +146,26 @@ function widget() {
   var r = JSON.parse(PropertiesService.getScriptProperties().getProperty('resumen') || '{}');
   var hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
   return { resumen: r, salud: leerSalud()[hoy] || {}, hoy: hoy };
+}
+
+// ---------- Calendario de avisos (suscripción desde el iPhone) ----------
+function ics() {
+  var r = JSON.parse(PropertiesService.getScriptProperties().getProperty('resumen') || '{}');
+  var avisos = r.avisos || [];
+  var tz = 'America/Argentina/Buenos_Aires';
+  var esc = function (t) { return String(t || '').replace(/\\/g, '\\\\').replace(/[,;]/g, function (c) { return '\\' + c; }).replace(/\n/g, '\\n'); };
+  var ahora = Utilities.formatDate(new Date(), 'UTC', "yyyyMMdd'T'HHmmss'Z'");
+  var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Producti-me//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'X-WR-CALNAME:Producti-me', 'X-WR-TIMEZONE:' + tz, 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H',
+    'BEGIN:VTIMEZONE', 'TZID:' + tz, 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:-0300', 'TZOFFSETTO:-0300', 'TZNAME:-03', 'END:STANDARD', 'END:VTIMEZONE'];
+  avisos.forEach(function (a) {
+    var ini = String(a.inicio).replace(/[-:]/g, '') + '00';
+    L.push('BEGIN:VEVENT', 'UID:' + a.id + '@producti-me', 'DTSTAMP:' + ahora, 'DTSTART;TZID=' + tz + ':' + ini,
+      'DURATION:PT' + (a.minutos || 5) + 'M', 'SUMMARY:' + esc(a.titulo), 'DESCRIPTION:' + esc(a.nota || ''),
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(a.titulo), 'TRIGGER:-PT' + (a.alarma || 0) + 'M', 'END:VALARM', 'END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return ContentService.createTextOutput(L.join('\r\n')).setMimeType(ContentService.MimeType.ICAL);
 }
 
 function json(o) {

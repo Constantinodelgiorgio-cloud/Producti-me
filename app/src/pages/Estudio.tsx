@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { sessionXp, weekSoFar, XP_TEST } from '../lib/logic'
@@ -6,6 +6,7 @@ import { addDays, diffDays, fmtShort, today, uid, weekStart } from '../lib/date'
 import { RUTA_INFO } from '../lib/seed'
 import type { AE, Entrega, Evidencia, EvidenciaTipo, Exam, MetaMes, Pregunta, Ruta, StudySession, Subject } from '../lib/types'
 import { Icon } from '../components/Icon'
+import { sonar, vibrar } from '../lib/guia'
 import { Bar, Card, Empty, Field, PageHead, Seg } from '../components/ui'
 import { BarC } from '../components/charts'
 import { useScrollToSub } from '../components/useScrollTo'
@@ -69,6 +70,18 @@ function Sesion() {
   const setRun = (v: number | null) => { setRunning(v); try { v ? localStorage.setItem(RUN_KEY, String(v)) : localStorage.removeItem(RUN_KEY) } catch { /* sin almacenamiento */ } }
   const elapsed = running ? Math.floor((Date.now() - running) / 1000) : 0
   const ruta = tipo !== 'facultad' ? RUTA_INFO[tipo] : null
+  // Pomodoro 25/5: pausas fijas (mejor ánimo y concentración que pausas a gusto, con el mismo rendimiento).
+  const [pomo, setPomo] = useState(() => { try { return localStorage.getItem('pm-pomodoro') === '1' } catch { return false } })
+  const enCiclo = elapsed % (30 * 60)
+  const pausa = pomo && enCiclo >= 25 * 60
+  const focoSeg = pomo ? Math.floor(elapsed / 1800) * 1500 + Math.min(enCiclo, 1500) : elapsed
+  const fase = running && pomo ? `${Math.floor(elapsed / 1800)}:${pausa ? 'p' : 'f'}` : ''
+  const faseRef = useRef('')
+  useEffect(() => {
+    if (!fase || fase === faseRef.current) return
+    if (faseRef.current) { sonar(pausa ? 'fin' : 'cambio'); vibrar('cambio'); ui.notify(pausa ? 'Pausa de 5 minutos: levantate, tomá agua, sin pantalla' : 'Volvé al foco: 25 minutos') }
+    faseRef.current = fase
+  }, [fase, pausa, ui])
 
   const save = async (minutos: number) => {
     if (minutos <= 0) return
@@ -90,7 +103,9 @@ function Sesion() {
   return (
     <section className="horizon now" style={{ ['--p' as string]: running ? Math.min(1, elapsed / (50 * 60)) : 0 }}>
       <div className="now-head"><span className="eyebrow">Sesión de foco</span>{running ? <span className="countdown"><span className="pulse" aria-hidden="true" />en curso</span> : <span className="cap">la evidencia duplica el XP</span>}</div>
-      <div className="timer" style={{ margin: '12px 0' }} aria-live="off">{String(Math.floor(elapsed / 60)).padStart(2, '0')}:{String(elapsed % 60).padStart(2, '0')}</div>
+      <div className="timer" style={{ margin: '12px 0' }} aria-live="off">{pomo && running ? (() => { const r = pausa ? 1800 - enCiclo : 1500 - enCiclo; return `${String(Math.floor(r / 60)).padStart(2, '0')}:${String(r % 60).padStart(2, '0')}` })() : `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`}</div>
+      {pomo && running && <p className="cap" style={{ marginTop: -6, marginBottom: 10 }}>{pausa ? 'Pausa' : 'Foco'} · {Math.floor(focoSeg / 60)} min de foco en total</p>}
+      <label className="check-row cap" style={{ marginBottom: 12 }}><input type="checkbox" checked={pomo} onChange={(e) => { setPomo(e.target.checked); try { localStorage.setItem('pm-pomodoro', e.target.checked ? '1' : '0') } catch { /* */ } }} />Pomodoro 25/5 (suena al cambiar)</label>
       <div className="chips" role="group" aria-label="Tipo de sesión" style={{ marginBottom: 12 }}>{TIPOS.map((x) => <button key={x} className="chip" aria-pressed={tipo === x} onClick={() => { setTipo(x); setAct(''); setEvTipo(x === 'programacion' ? 'commit' : x === 'ia' ? 'link' : 'texto') }}><Icon name={x === 'facultad' ? 'graduation-cap' : RUTA_INFO[x].icon} size={13} />{LBL[x]}</button>)}</div>
       <div className="form-grid">
         <Field label={tipo === 'facultad' ? 'Materia' : tipo === 'lectura' ? 'Libro' : 'Tema'} id="s-m"><input id="s-m" list="materias" value={tema} onChange={(e) => setTema(e.target.value)} /></Field>
@@ -109,7 +124,7 @@ function Sesion() {
       )}
       <div className="sess-actions">
         {!running ? <button className="btn btn-primary" onClick={() => setRun(Date.now())}><Icon name="play" size={16} />Empezar</button>
-          : <button className="btn btn-primary" disabled={checking} onClick={async () => { await save(Math.max(1, Math.round(elapsed / 60))); setRun(null) }}><Icon name="square" size={14} />{checking ? 'Verificando…' : 'Terminar y guardar'}</button>}
+          : <button className="btn btn-primary" disabled={checking} onClick={async () => { await save(Math.max(1, Math.round(focoSeg / 60))); setRun(null) }}><Icon name="square" size={14} />{checking ? 'Verificando…' : 'Terminar y guardar'}</button>}
         {running && <button className="btn btn-ghost" onClick={() => setRun(null)}>Descartar</button>}
         {!running && <form className="sess-manual" onSubmit={(e) => { e.preventDefault(); save(Number(manual)) }}>
           <span className="cap">o cargá</span>
@@ -205,6 +220,22 @@ function Exams() {
   const [e, setE] = useState<Omit<Exam, 'id'>>({ materiaId: d.subjects[0]?.id ?? '', tipo: 'parcial', fecha: today() })
   const t = today()
   const list = d.exams.slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
+  // Plan hacia atrás desde la fecha del examen: sesiones espaciadas con práctica de evocación
+  // (las dos técnicas de utilidad "alta") y un simulacro con tiempo antes del final.
+  const armarPlan = (x: Exam) => {
+    const D = diffDays(x.fecha, t)
+    const materia = d.subjects.find((s) => s.id === x.materiaId)?.nombre ?? 'la materia'
+    const offs = [...new Set([0.8, 0.6, 0.42, 0.28, 0.16].map((k) => Math.round(D * k)).concat([2, 1]))].filter((k) => k >= 1 && k < D).sort((a, b) => b - a)
+    const nuevas = offs.map((k, i) => {
+      const ult = k === 1
+      const sim = k === 2 || (i === offs.length - 2 && !offs.includes(2))
+      const texto = ult ? `${materia}: repaso liviano y dormir bien` : sim ? `${materia}: simulacro con tiempo (como el ${x.tipo})` : i === 0 ? `${materia}: armar resumen + 10 preguntas de autoevaluación` : `${materia}: práctica tipo examen sin mirar apuntes`
+      return { id: uid(), texto, fecha: addDays(x.fecha, -k), creada: t, minutos: ult ? 45 : sim ? 120 : 90, origen: `examen:${x.id}` }
+    })
+    d.set((s) => ({ tareas: [...(s.tareas ?? []), ...nuevas] }))
+    const horas = nuevas.reduce((a, n) => a + n.minutos, 0) / 60
+    ui.notify(`${nuevas.length} sesiones espaciadas hasta el ${fmtShort(x.fecha)} (${Math.round(horas)} h). Aparecen en Hoy el día que toca.`, () => useStore.getState().set((s) => ({ tareas: s.tareas.filter((y) => y.origen !== `examen:${x.id}`) })))
+  }
   return (
     <Card title="Fechas: parciales, TPs y finales" icon="calendar">
       <form className="form-grid" onSubmit={(ev) => { ev.preventDefault(); d.set((s) => ({ exams: [...s.exams, { id: uid(), ...e }] })); ui.notify('Fecha agregada') }}>
@@ -213,6 +244,7 @@ function Exams() {
         <Field label="Fecha" id="x-f"><input id="x-f" type="date" value={e.fecha} onChange={(x) => setE({ ...e, fecha: x.target.value })} /></Field>
         <button className="btn btn-quiet"><Icon name="plus" size={16} />Agregar</button>
       </form>
+      <p className="cap" style={{ marginTop: 10 }}>"Armar plan" reparte sesiones espaciadas desde hoy hasta el examen, con práctica tipo examen: hacerse preguntas y espaciar son las técnicas que más rinden; releer y subrayar, las que menos. Calculá siempre 1,5 veces lo que creés que te va a llevar.</p>
       {list.length === 0 ? <div className="empty sm"><p>Cargá las fechas para ver la cuenta regresiva en Hoy.</p></div> : (
         <div className="tbl-wrap" style={{ marginTop: 12 }}><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Materia</th><th className="num">Faltan</th><th /></tr></thead><tbody>
           {list.map((x) => {
@@ -220,7 +252,7 @@ function Exams() {
             return (
               <tr key={x.id} style={{ opacity: n < 0 ? 0.6 : 1 }}>
                 <td>{fmtShort(x.fecha)}</td><td>{x.tipo}</td><td>{d.subjects.find((s) => s.id === x.materiaId)?.nombre}</td>
-                <td className="num">{n >= 0 ? `${n} d` : 'pasó'}</td>
+                <td className="num">{n >= 0 ? `${n} d` : 'pasó'}{n >= 3 && <button className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }} disabled={d.tareas.some((t) => t.origen === `examen:${x.id}`)} onClick={() => armarPlan(x)}>{d.tareas.some((t) => t.origen === `examen:${x.id}`) ? 'Plan armado' : 'Armar plan'}</button>}</td>
                 <td><button className="icon-btn sm" aria-label="Borrar fecha" onClick={() => { d.set((s) => ({ exams: s.exams.filter((y) => y.id !== x.id) })); ui.notify('Fecha borrada', () => d.set((s) => ({ exams: [...s.exams, x] })), 'neutral') }}><Icon name="trash" size={15} /></button></td>
               </tr>
             )

@@ -18,7 +18,7 @@ export const ListoCard = ({ compacto }: { compacto?: boolean }) => {
   if (L.puntaje === null) return (
     <button className="listo vacio" onClick={() => ui.openSheet('checkin-manana')}>
       <Icon name="gauge" size={20} />
-      <span className="grow"><b>Listo para hoy</b><small>{L.frase}</small></span>
+      <span className="grow"><b>Check-in de la mañana · 30 s</b><small>Sueño, energía, dolor y la prioridad del día. Con eso calculo qué tan listo estás para hoy.</small></span>
       <Icon name="chevron-right" size={16} />
     </button>
   )

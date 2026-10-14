@@ -37,7 +37,7 @@ export type HabitState = 'hecho' | 'minimo' | 'no' | 'reserva'
 export type TipoEstado = 'partido' | 'parciales' | 'lesion' | 'enfermo' | 'semana pesada' | 'viaje'
 export interface EstadoPlan { id: string; tipo: TipoEstado; desde: string; hasta: string; areas: AreaId[]; nota?: string }
 /** Tarea puntual (no hábito). Sin fecha = "algún día". */
-export interface Tarea { id: string; texto: string; fecha?: string; hecha?: string; creada: string; pospuesta?: number; minutos?: number; dificil?: boolean; primerPaso?: string }
+export interface Tarea { id: string; texto: string; fecha?: string; hecha?: string; creada: string; pospuesta?: number; minutos?: number; dificil?: boolean; primerPaso?: string; origen?: string }
 /** Lo que se cruzó cuando un hábito no salió: para aprender, no es una excusa. */
 export interface Aprendizaje { id: string; fecha: string; habitId: string; que: string; distinto?: string }
 
@@ -107,6 +107,10 @@ export interface Pendiente extends Omit<MoneyMove, 'id'> { id: string; fuente: s
 export type Activo = 'cedear' | 'accion' | 'cripto' | 'fci' | 'plazo fijo' | 'dolares' | 'bono' | 'otro'
 export interface Posicion { id: string; activo: string; tipo: Activo; cantidad: number; valorUSD: number; actualizado: string }
 export interface Aporte { id: string; fecha: string; usd: number; nota?: string; retiro?: boolean }
+/** Compra en cuotas: se carga una vez y se proyecta sobre los resúmenes de la tarjeta. */
+export interface Cuota { id: string; descripcion: string; total: number; cantidad: number; primerMes: string; fecha: string }
+/** Datos de mercado cacheados: dólar MEP e IPC mensual (INDEC vía datos.gob.ar). */
+export interface Mercado { mep?: { venta: number; fecha: string }; ipc?: Record<string, number>; actualizado?: string }
 
 export interface SocialLog { id: string; fecha: string; tipo: 'juntada' | 'mensaje' | 'llamada' | 'plan propuesto'; con: string; nota?: string; charla?: string; minutos?: number }
 /** Persona que importa: cada cuánto querés hablarle, cumpleaños y teléfono para un mensaje de un toque. */
@@ -176,6 +180,8 @@ export interface Settings {
   syncOn?: boolean
   /** reparable: un castigo se anula volviendo (día ≥ 70 % o semana del área ≥ 75 %); duro: no se repara */
   castigos?: 'reparable' | 'duro'
+  /** áreas apagadas: no aparecen en Áreas ni en el menú lateral */
+  areasOff?: string[]
   /** cómo guía Cuerpo sin mirar la pantalla */
   guia?: { sonido: boolean; vibracion: boolean; voz: boolean }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { last, portfolioReturn, weeklyCandles } from '../lib/logic'
@@ -9,6 +9,7 @@ import { Icon } from '../components/Icon'
 import { Bar, Card, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 import { BarC, Candles } from '../components/charts'
 import { useScrollToSub } from '../components/useScrollTo'
+import { actualizarMercado, compararCuotas, inflacionEntre, inflacionMensual, proyeccionCuotas, recurrentes, sumarMes } from '../lib/mercado'
 
 const usd = (n: number) => `USD ${Math.round(n).toLocaleString('es-AR')}`
 const ars = (n: number) => `$ ${n.toLocaleString('es-AR', { maximumFractionDigits: Number.isInteger(n) ? 0 : 2 })}`
@@ -76,6 +77,9 @@ function Cartera() {
       </div>
 
       <aside className="stack">
+        <RealCard gasto={gasto} />
+        <CuotasCard />
+        <FijosCard />
         <CorreoCard />
         <Card title="Por cuenta · este mes" icon="credit-card">
           {porCuenta.map((c) => <div className="list-row" key={c.id}><Icon name={c.icon} size={16} /><span className="grow">{c.nombre}</span><span className="k">{ars(c.v)}</span></div>)}
@@ -313,6 +317,7 @@ function Patrimonio() {
           {totalPos > 0 && <button className="btn btn-primary btn-block" style={{ marginTop: 10 }} onClick={() => { d.set((s) => ({ portfolio: [...s.portfolio.filter((x) => x.fecha !== today()), { fecha: today(), valor: totalPos }] })); ui.notify(`Valor del portafolio de hoy: ${usd(totalPos)}`) }}>Registrar {usd(totalPos)} como valor de hoy</button>}
         </Card>
         <Card title="Portafolio · velas semanales" icon="trending-up"><Candles data={weeklyCandles(d.portfolio)} /></Card>
+        <HitosCard ahorro={ahorro} />
         <Card title="Ahorro · velas semanales" icon="piggy-bank"><Candles data={weeklyCandles(d.savings)} target={P.ahorroObjetivo} /></Card>
       </div>
       <aside className="stack">
@@ -339,5 +344,125 @@ function Patrimonio() {
         </section>
       </aside>
     </div>
+  )
+}
+
+/** El mes en términos reales y en dólares MEP: con inflación mensual, lo nominal engaña. */
+function RealCard({ gasto }: { gasto: number }) {
+  const d = useStore()
+  const [, tick] = useState(0)
+  useEffect(() => { actualizarMercado().then(() => tick((x) => x + 1)).catch(() => {}) }, [])
+  const mes = today().slice(0, 7)
+  const prev = sumarMes(mes, -1)
+  const ars0 = d.money.filter((m) => (m.moneda ?? 'ARS') === 'ARS' && m.tipo === 'gasto' && m.categoria !== 'Aporte a inversiones')
+  const dia = Number(today().slice(8))
+  // Comparación justa: el mes pasado hasta el mismo día.
+  const prevHastaHoy = ars0.filter((m) => m.fecha.startsWith(prev) && Number(m.fecha.slice(8)) <= dia).reduce((a, m) => a + m.monto, 0)
+  const infl = inflacionMensual(d)
+  const inflPeriodo = inflacionEntre(d, prev, mes)
+  const real = prevHastaHoy ? (gasto / prevHastaHoy) / (1 + inflPeriodo) - 1 : null
+  const mep = d.mercado?.mep?.venta
+  const cats = [...new Set(ars0.filter((m) => m.fecha.startsWith(mes)).map((m) => m.categoria))].map((c) => {
+    const a = ars0.filter((m) => m.fecha.startsWith(mes) && m.categoria === c).reduce((x, m) => x + m.monto, 0)
+    const b = ars0.filter((m) => m.fecha.startsWith(prev) && Number(m.fecha.slice(8)) <= dia && m.categoria === c).reduce((x, m) => x + m.monto, 0)
+    return { c, a, b, real: b ? (a / b) / (1 + inflPeriodo) - 1 : null }
+  }).filter((x) => x.real !== null && Math.abs(x.real) > 0.1).sort((x, y) => Math.abs(y.real!) - Math.abs(x.real!)).slice(0, 3)
+  const pct = (x: number) => `${x >= 0 ? '+' : '−'}${Math.abs(Math.round(x * 100))} %`
+  return (
+    <section className="panel pad">
+      <h2 className="h2"><Icon name="trending-up" size={16} />Tu mes, en serio</h2>
+      <div className="carga-kpis">
+        <div><span className="cap">En dólares MEP</span><span className="val-m num">{mep ? `US$ ${Math.round(gasto / mep).toLocaleString('es-AR')}` : '—'}</span><small className="cap">{mep ? `MEP $ ${Math.round(mep).toLocaleString('es-AR')}` : 'sin conexión'}</small></div>
+        <div><span className="cap">Vs. mes pasado, real</span><span className="val-m num">{real === null ? '—' : pct(real)}</span><small className="cap">{real === null ? 'sin datos del mes pasado' : `al mismo día, sin inflación`}</small></div>
+        <div><span className="cap">Inflación</span><span className="val-m num">{infl ? `${(infl.tasa * 100).toFixed(1).replace('.', ',')} %` : '—'}</span><small className="cap">{infl ? `mensual (${new Date(`${infl.mes}-01T12:00`).toLocaleDateString('es-AR', { month: 'long' })})` : 'INDEC'}</small></div>
+      </div>
+      {cats.length > 0 && <div style={{ marginTop: 12 }}>{cats.map((x) => <div className="list-row" key={x.c}><span className="grow">{x.c}</span><span className="cap num">{pct(x.real!)} real</span></div>)}</div>}
+      <p className="cap" style={{ marginTop: 10 }}>Con 2 % de inflación por mes, la plata quieta pierde: si gastás lo mismo en pesos que el mes pasado, en realidad gastaste menos.</p>
+    </section>
+  )
+}
+
+/** Cuotas como plan: se cargan una vez y se ve cuánto comprometen de los próximos resúmenes. */
+function CuotasCard() {
+  const d = useStore()
+  const ui = useUI()
+  const mes = today().slice(0, 7)
+  const [abierto, setAbierto] = useState<'nueva' | 'calc' | null>(null)
+  const [c, setC] = useState({ descripcion: '', total: undefined as number | undefined, cantidad: 3, primerMes: sumarMes(mes, 1) })
+  const [calc, setCalc] = useState({ contado: undefined as number | undefined, cuotas: undefined as number | undefined, n: 6 })
+  const proy = proyeccionCuotas(d, mes, 6)
+  const max = Math.max(1, ...proy.map((x) => x.total))
+  const infl = inflacionMensual(d)?.tasa ?? 0.02
+  const R = calc.contado && calc.cuotas ? compararCuotas(calc.contado, calc.cuotas, calc.n, infl) : null
+  const guardar = () => {
+    if (!c.descripcion.trim() || !c.total) return
+    const id = uid()
+    d.set((s) => ({ cuotas: [...(s.cuotas ?? []), { id, descripcion: c.descripcion.trim(), total: c.total!, cantidad: c.cantidad, primerMes: c.primerMes, fecha: today() }] }))
+    ui.notify(`${c.cantidad} cuotas de ${ars(c.total / c.cantidad)} cargadas`, () => useStore.getState().set((s) => ({ cuotas: s.cuotas.filter((x) => x.id !== id) })))
+    setAbierto(null); setC({ ...c, descripcion: '', total: undefined })
+  }
+  const activas = (d.cuotas ?? []).filter((x) => sumarMes(x.primerMes, x.cantidad) > mes)
+  return (
+    <section className="panel pad">
+      <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2"><Icon name="credit-card" size={16} />Cuotas en la tarjeta</h2>
+        <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost btn-sm" onClick={() => setAbierto(abierto === 'calc' ? null : 'calc')}>¿Conviene?</button><button className="btn btn-ghost btn-sm" onClick={() => setAbierto(abierto === 'nueva' ? null : 'nueva')}><Icon name="plus" size={14} />Cargar</button></div></div>
+      {abierto === 'nueva' && <div className="stack" style={{ gap: 10, marginBottom: 14 }}>
+        <div className="form-grid">
+          <Field label="Qué compraste" id="cu-d"><input id="cu-d" value={c.descripcion} onChange={(e) => setC({ ...c, descripcion: e.target.value })} /></Field>
+          <Field label="Total en cuotas ($)" id="cu-t"><NumInput id="cu-t" value={c.total} onValue={(n) => setC({ ...c, total: n })} /></Field>
+          <Field label="Cuotas" id="cu-n"><select id="cu-n" value={c.cantidad} onChange={(e) => setC({ ...c, cantidad: Number(e.target.value) })}>{[2, 3, 6, 9, 12, 18, 24].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+          <Field label="Primer resumen" id="cu-m"><input id="cu-m" type="month" value={c.primerMes} onChange={(e) => setC({ ...c, primerMes: e.target.value })} /></Field>
+        </div>
+        <button className="btn btn-primary" disabled={!c.descripcion.trim() || !c.total} onClick={guardar}>Guardar</button>
+      </div>}
+      {abierto === 'calc' && <div className="stack" style={{ gap: 10, marginBottom: 14 }}>
+        <div className="form-grid">
+          <Field label="Precio de contado" id="cc-c"><NumInput id="cc-c" value={calc.contado} onValue={(n) => setCalc({ ...calc, contado: n })} /></Field>
+          <Field label="Total en cuotas" id="cc-t"><NumInput id="cc-t" value={calc.cuotas} onValue={(n) => setCalc({ ...calc, cuotas: n })} /></Field>
+          <Field label="Cuotas" id="cc-n"><select id="cc-n" value={calc.n} onChange={(e) => setCalc({ ...calc, n: Number(e.target.value) })}>{[3, 6, 9, 12, 18].map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+        </div>
+        {R && <p className={`veredicto ${R.conviene}`}><b>{R.conviene === 'cuotas' ? 'Conviene en cuotas' : 'Conviene de contado'}</b> · recargo {Math.round(R.recargo * 100)} %. Con inflación de {(infl * 100).toFixed(1).replace('.', ',')} % mensual, las {calc.n} cuotas de {ars(R.cuota)} valen hoy {ars(Math.round(R.vp))}: {R.conviene === "cuotas" ? "ahorrás" : "pagás de más"} {ars(Math.round(R.diferencia))}.</p>}
+      </div>}
+      {activas.length === 0 ? <p className="cap">Sin cuotas activas. Las "cuotas sin interés" suelen tener un recargo del 10 al 30 % sobre el contado: usá "¿Conviene?" antes de comprar.</p> : <>
+        <div className="cuotas-bars">{proy.map((x) => <div key={x.mes}><span className="cap num">{x.total ? `${Math.round(x.total / 1000)} k` : ''}</span><i style={{ height: `${Math.max(2, (x.total / max) * 60)}%` }} /><span className="cap">{new Date(`${x.mes}-01T12:00`).toLocaleDateString('es-AR', { month: 'short' })}</span></div>)}</div>
+        {activas.map((x) => { const pagadas = Math.max(0, Math.min(x.cantidad, (Number(mes.slice(0, 4)) - Number(x.primerMes.slice(0, 4))) * 12 + Number(mes.slice(5)) - Number(x.primerMes.slice(5)))); return <div className="list-row" key={x.id}><span className="grow">{x.descripcion}<small className="cap" style={{ display: 'block' }}>{pagadas}/{x.cantidad} pagadas · {ars(x.total / x.cantidad)} por mes</small></span><button className="icon-btn sm" aria-label={`Borrar ${x.descripcion}`} onClick={() => d.set((s) => ({ cuotas: s.cuotas.filter((y) => y.id !== x.id) }))}><Icon name="trash" size={14} /></button></div> })}
+      </>}
+    </section>
+  )
+}
+
+/** Gastos fijos y suscripciones detectados: los que se olvidan son los más caros. */
+function FijosCard() {
+  const d = useStore()
+  const R = recurrentes(d)
+  if (!R.length) return null
+  const total = R.reduce((a, x) => a + x.promedio, 0)
+  return (
+    <Card title="Fijos y suscripciones" icon="repeat">
+      {R.slice(0, 8).map((x) => <div className="list-row" key={x.clave}><span className="grow">{x.nombre}<small className="cap" style={{ display: 'block' }}>{x.meses} meses seguidos{x.usd ? ' · en dólares: si lo pagás en pesos suma el 30 % de percepción' : ''}</small></span><span className="k">{ars(x.promedio)}</span></div>)}
+      <p className="cap" style={{ marginTop: 8 }}>≈ {ars(total)} por mes comprometidos antes de gastar nada.</p>
+    </Card>
+  )
+}
+
+/** Hitos con fecha para la meta de ahorro: metas explícitas aumentan el ahorro. */
+function HitosCard({ ahorro }: { ahorro: number }) {
+  const d = useStore()
+  const P = d.profile
+  const meses = Math.max(1, Math.round(diffDays(P.ahorroFecha, today()) / 30.4))
+  const porMes = Math.max(0, (P.ahorroObjetivo - ahorro) / meses)
+  const paso = P.ahorroObjetivo >= 4000 ? 1000 : 500
+  const hitos: { usd: number; fecha: string }[] = []
+  for (let v = Math.ceil((ahorro + 1) / paso) * paso; v <= P.ahorroObjetivo && hitos.length < 4; v += paso) {
+    const m = porMes > 0 ? Math.ceil((v - ahorro) / porMes) : 0
+    hitos.push({ usd: v, fecha: sumarMes(today().slice(0, 7), m) })
+  }
+  return (
+    <Card title="Hitos hasta la meta" icon="target">
+      {hitos.length === 0 ? <p className="cap">Meta alcanzada.</p> : <>
+        <p className="body-2" style={{ marginBottom: 10 }}>Para llegar a {usd(P.ahorroObjetivo)} el {fmtShort(P.ahorroFecha)}: <b>{usd(porMes)} por mes</b>.</p>
+        {hitos.map((h) => <div className="list-row" key={h.usd}><Icon name="circle-dot" size={14} /><span className="grow">{usd(h.usd)}</span><span className="cap">{new Date(`${h.fecha}-01T12:00`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</span></div>)}
+      </>}
+    </Card>
   )
 }

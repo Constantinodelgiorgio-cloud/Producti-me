@@ -942,7 +942,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .tarea.done .tt { color: var(--t3); text-decoration: line-through; }
 .tarea-add { display: flex; gap: 8px; align-items: center; padding-top: 10px; }
 .tarea-add input { flex: 1; min-width: 0; }
-.tarea-add select { width: 88px !important; flex: none; }
+.tarea-add select { width: 104px !important; flex: none; padding-right: 28px !important; }
 .capacidad { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; }
 .cap-bar { position: relative; height: 5px; border-radius: 5px; background: var(--surface-3); }
 .cap-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--tone); }
@@ -1013,3 +1013,13 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .mes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
 .mes-c { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 .mes-c .up { color: var(--success); }
+
+/* Finanzas: cuotas */
+.cuotas-bars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; height: 96px; align-items: end; margin-bottom: 12px; }
+.cuotas-bars > div { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+.cuotas-bars i { width: 100%; max-width: 26px; border-radius: 4px 4px 2px 2px; background: color-mix(in srgb, var(--tone) 60%, transparent); min-height: 2px; flex: none; }
+.cuotas-bars .cap { font-size: 10.5px; }
+.veredicto { font-size: 13.5px; line-height: 1.5; padding: 12px 14px; border-radius: var(--r-2); background: var(--surface-2); color: var(--t2); }
+.veredicto b { color: var(--t1); }
+.veredicto.cuotas { box-shadow: inset 0 0 0 1px rgba(95,191,146,.4); }
+.veredicto.contado { box-shadow: inset 0 0 0 1px rgba(224,168,82,.4); }

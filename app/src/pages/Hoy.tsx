@@ -157,9 +157,9 @@ function Ahora() {
 
       <aside className="stack rail">
         {/* Nivel 2 · cómo viene el día */}
-        {(!ci?.animoManana || (hour >= 17 && !ci?.animoNoche) || (hour >= 19 && !ci?.cerrado)) && (
+        {((hour >= 17 && !ci?.animoNoche) || (hour >= 19 && !ci?.cerrado)) && (
           <div className="ci-row">
-            {!ci?.animoManana && <button className="ci-btn" onClick={() => ui.openSheet('checkin-manana')}><Icon name="sun" size={20} /><span><b>Check-in de la mañana</b><small>20 s · sueño, energía y prioridad</small></span></button>}
+
             {hour >= 17 && !ci?.animoNoche && <button className="ci-btn" onClick={() => ui.openSheet('checkin-noche')}><Icon name="moon" size={20} /><span><b>Check-in de la noche</b><small>1 min · ánimo y victoria</small></span></button>}
             {hour >= 19 && !ci?.cerrado && <button className="ci-btn" onClick={() => ui.openSheet('cierre')}><Icon name="sunset" size={20} /><span><b>Cerrar el día</b><small>30 s · pendientes y la difícil de mañana</small></span></button>}
           </div>
@@ -197,7 +197,7 @@ function ParaCompletar() {
   const pend = orden(d, ds.hs.filter((h) => !ds.log[h.id] && !excusaDe(d, f, h.id)))
   if (ds.all.length === 0) return <section className="panel"><Empty icon="list-checks" title="No hay hábitos para hoy" action={<button className="btn btn-quiet" onClick={() => ui.go('habitos')}>Configurar hábitos</button>}>Agregá hábitos y elegí qué días aplican.</Empty></section>
   if (!Object.keys(d.habitLog).some((x) => x >= d.inicio))
-    return <section className="panel"><Empty icon="list-checks" title="Tu primer día empieza acá" action={<><button className="btn btn-primary" onClick={() => ui.openSheet('checkin-manana')}><Icon name="sun" />Hacer el check-in</button><button className="btn btn-quiet" onClick={() => ui.go('habitos')}>Ver hábitos</button></>}>Tocá un hábito cuando lo hacés. Lo más importante para este momento aparece primero.</Empty></section>
+    return <section className="panel"><Empty icon="list-checks" title="Tu primer día empieza acá" action={<button className="btn btn-quiet" onClick={() => ui.go('habitos')}>Ver hábitos</button>}>Tocá un hábito cuando lo hacés; con la versión mínima alcanza. Lo más importante para este momento aparece primero.</Empty></section>
   if (!pend.length) return null
   return (
     <section className="todo">

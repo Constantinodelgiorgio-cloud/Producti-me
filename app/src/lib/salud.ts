@@ -1,6 +1,7 @@
 import { useStore, type Data } from './store'
 import { addDays, today } from './date'
-import { agendaDe, castigosPendientes, dayNutrition, duracionBloque, excusaDe, habitScore, habitsFor, levelInfo, sancionActiva, toMin, totalXp } from './logic'
+import { agendaDe, bedtimeFor, castigosPendientes, dayNutrition, duracionBloque, excusaDe, habitScore, habitsFor, hourFmt, levelInfo, sancionActiva, toMin, totalXp } from './logic'
+import { dow } from './date'
 import type { Salud } from './types'
 
 // Datos que la app toma sola y resumen para el widget, ambos a través del script de Google del usuario
@@ -47,6 +48,42 @@ export interface Resumen {
   agenda: { ini: number; fin: number; que: string }[]
   proteina: { g: number; meta: number }; kcal: { v: number; meta: number }
   pasos?: number; pasosMeta: number
+  avisos: Aviso[]
+}
+/** Evento para el calendario suscripto (ICS): así el iPhone avisa aunque la app esté cerrada. */
+export interface Aviso { id: string; titulo: string; inicio: string; minutos: number; alarma: number; nota?: string }
+
+/** Avisos de los próximos 7 días: tres ventanas fijas (mañana, tarde, cierre) + tareas, exámenes, cumpleaños y castigos. */
+export const avisosProximos = (d: Data): Aviso[] => {
+  const out: Aviso[] = []
+  const t = today()
+  for (let i = 0; i < 7; i++) {
+    const f = addDays(t, i)
+    const wake = d.profile.despertar[dow(f)]
+    out.push({ id: `ci-${f}`, titulo: 'Check-in de la mañana (30 s)', inicio: `${f}T${hourFmt(toMin(wake) + 20)}`, minutos: 5, alarma: 0, nota: 'Sueño, energía, dolor y la prioridad del día.' })
+    const bed = bedtimeFor(d.profile.despertar[dow(addDays(f, 1))], d.profile.suenoMin)
+    const cierre = (toMin(bed) - 60 + 1440) % 1440
+    const fCierre = cierre < 6 * 60 ? addDays(f, 1) : f
+    out.push({ id: `cierre-${f}`, titulo: 'Cerrar el día (30 s)', inicio: `${fCierre}T${hourFmt(cierre)}`, minutos: 5, alarma: 0, nota: `Pendientes, la difícil de mañana. A dormir antes de las ${bed}.` })
+    const tareas = (d.tareas ?? []).filter((x) => !x.hecha && x.fecha === f)
+    if (tareas.length) out.push({ id: `tareas-${f}`, titulo: `${tareas.length} tarea${tareas.length > 1 ? 's' : ''} para hoy`, inicio: `${f}T15:00`, minutos: 5, alarma: 0, nota: tareas.map((x) => x.texto).join(' · ') })
+  }
+  for (const e of d.exams.filter((x) => x.fecha >= t && x.fecha <= addDays(t, 30))) {
+    const m = d.subjects.find((s) => s.id === e.materiaId)?.nombre ?? ''
+    out.push({ id: `ex-${e.id}`, titulo: `${e.tipo} de ${m}`, inicio: `${e.fecha}T08:00`, minutos: 120, alarma: 14 * 60, nota: 'Mañana: repaso liviano y dormir bien.' })
+  }
+  for (const p of (d.personas ?? []).filter((x) => x.cumple)) {
+    let f = `${t.slice(0, 4)}-${p.cumple}`
+    if (f < t) f = `${Number(t.slice(0, 4)) + 1}-${p.cumple}`
+    if (f <= addDays(t, 30)) out.push({ id: `cumple-${p.id}`, titulo: `Cumple de ${p.nombre}`, inicio: `${f}T10:00`, minutos: 15, alarma: 0, nota: 'Un mensaje corto vale más de lo que creés.' })
+  }
+  for (const p of castigosPendientes(d)) {
+    if (!p.vence) continue
+    const v = new Date(new Date(p.vence).getTime() - 6 * 3600e3)
+    const iso = `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T${String(v.getHours()).padStart(2, '0')}:${String(v.getMinutes()).padStart(2, '0')}`
+    out.push({ id: `pen-${p.id}`, titulo: `Quedan 6 h: ${p.tarea}`, inicio: iso, minutos: 5, alarma: 0, nota: 'Si vence, 72 h sin XP. Volver a tus hábitos también lo anula.' })
+  }
+  return out
 }
 
 /** Lo justo para el widget: sin textos del diario ni montos. */
@@ -68,6 +105,7 @@ export const resumen = (d: Data): Resumen => {
     agenda: agendaDe(d, f).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), que: a.que })),
     proteina: { g: Math.round(nut.prot), meta: d.profile.protObjetivo }, kcal: { v: Math.round(nut.kcal), meta: d.profile.kcalObjetivo },
     pasos: d.pasos[f], pasosMeta: d.profile.pasosObjetivo ?? 8000,
+    avisos: avisosProximos(d),
   }
 }
 
@@ -76,6 +114,7 @@ export const publicarResumen = async () => {
   const c = conf()
   if (!c) return
   const r = resumen(useStore.getState())
+  // La firma ignora la hora para no publicar en cada minuto.
   const firma = JSON.stringify({ ...r, actualizado: '' })
   if (firma === ultimo) return
   const res = await fetch(c.url, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token: c.token, accion: 'resumen', resumen: r }) })

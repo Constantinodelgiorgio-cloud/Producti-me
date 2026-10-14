@@ -67,6 +67,15 @@ export default function Ajustes() {
     <div className="view">
       <PageHead eyebrow="Producti-Me" title="Ajustes" />
       <div className="grid">
+        <Card title="Áreas visibles" icon="areas">
+          <p className="cap" style={{ marginBottom: 12 }}>Apagá lo que no estés usando: menos pantallas, menos ruido. Los datos no se borran y podés volver a prenderlas.</p>
+          <div className="chips" style={{ flexWrap: 'wrap' }}>
+            {([['fisico', 'Físico'], ['cuerpo', 'Cuerpo'], ['estudio', 'Estudio'], ['finanzas', 'Finanzas'], ['vida', 'Vida']] as const).map(([k, n]) => {
+              const off = (d.settings.areasOff ?? []).includes(k)
+              return <button key={k} className="chip" aria-pressed={!off} onClick={() => d.set((s) => ({ settings: { ...s.settings, areasOff: off ? (s.settings.areasOff ?? []).filter((x) => x !== k) : [...(s.settings.areasOff ?? []), k] } }))}>{n}</button>
+            })}
+          </div>
+        </Card>
         <Card title="Idioma" icon="globe">
           <div className="field"><label>Idioma del coach y del dictado por voz</label><Seg label="Idioma" value={d.settings.lang} onChange={(v) => d.set((s) => ({ settings: { ...s.settings, lang: v } }))} options={[['es', 'Español'], ['en', 'English']]} /><span className="cap">La interfaz completa en inglés llega en una próxima etapa.</span></div>
         </Card>
@@ -175,6 +184,15 @@ function Conexion() {
           {st.correoUrl && <button className="btn btn-ghost" onClick={copiar}><Icon name="link" size={16} />Copiar código de vínculo</button>}
         </div>
         {codigo && st.correoUrl && <textarea readOnly rows={3} value={codigo} aria-label="Código de vínculo" onFocus={(e) => e.target.select()} />}
+        {st.correoUrl && <div className="link-box">
+          <div className="eyebrow">Avisos aunque la app esté cerrada</div>
+          <p className="cap">Suscribí el calendario de Producti-me en el iPhone: check-in de la mañana, cierre del día, tareas, exámenes, cumpleaños y castigos por vencer, con alerta. iPhone → Ajustes → Calendario → Cuentas → Añadir cuenta → Otra → Añadir calendario suscrito → pegá el enlace. Después, en esa cuenta, desactivá "Eliminar alertas".</p>
+          <button className="btn btn-quiet" onClick={async () => {
+            const u = new URL(st.correoUrl!); u.searchParams.set('token', st.correoToken ?? ''); u.searchParams.set('accion', 'ics')
+            const link = u.toString().replace(/^https:/, 'webcal:')
+            try { await navigator.clipboard.writeText(link); ui.notify('Enlace del calendario copiado') } catch { setCodigo(link) }
+          }}><Icon name="calendar-clock" size={16} />Copiar enlace del calendario</button>
+        </div>}
         {d.correo.error && <span className="err">Correo: {d.correo.error}</span>}
         <p className="cap">La clave de la IA no se sincroniza: cargala en cada dispositivo.</p>
       </div>

@@ -25,6 +25,8 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [13 · Evolución implementada](docs/13-evolucion-implementada.md) | Qué cambió, migración de datos, verificación y límites · **implementado** |
 | [14 · Sincronización y correo](docs/14-sincronizacion.md) | iPhone + iPad con los mismos datos, script de Google, día 1, Cuerpo · **implementado** |
 | [15 · Salud, widget y app nativa](docs/15-salud-widget-y-app-nativa.md) | Guía por sonido/vibración/voz, datos automáticos de Salud vía Atajos, widget con Scriptable, propuesta de app nativa |
+| [16 · Investigación de apps comparables](docs/16-investigacion-apps-comparables.md) | Qué hacen Whoop, Oura, MacroFactor, Sunsama, How We Feel, YNAB y otras, evidencia y 24 mejoras priorizadas |
+| [17 · Salto de calidad](docs/17-salto-de-calidad.md) | Las mejoras implementadas, cómo funcionan y sus límites · **implementado** |
 
 ## Próximo paso
 
