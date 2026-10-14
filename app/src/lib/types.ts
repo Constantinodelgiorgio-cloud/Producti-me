@@ -80,7 +80,7 @@ export interface Workout {
 
 export interface BodyEntry { fecha: string; peso?: number; grasa?: number; cintura?: number }
 export type MomentoComida = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack'
-export interface Meal { id: string; fecha: string; nombre: string; kcal: number; prot: number; carb: number; grasa: number; foodId?: string; gramos?: number; momento?: MomentoComida }
+export interface Meal { id: string; fecha: string; nombre: string; kcal: number; prot: number; carb: number; grasa: number; foodId?: string; gramos?: number; momento?: MomentoComida; /** hora (HH:MM) y número de comida del día (1.ª, 2.ª…) */ hora?: string; comida?: number }
 export interface Food { nombre: string; kcal: number; prot: number; carb: number; grasa: number }
 
 export type Entrega = 'entregado' | 'incompleto'

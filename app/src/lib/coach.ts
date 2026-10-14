@@ -97,6 +97,7 @@ export const chatContext = (d: Data) => {
     ...(d.settings.coachLeeDiario ? { diarioUltimos: d.journal.filter((j) => !j.privada).slice(-3).map((j) => ({ f: j.fecha, texto: j.texto.slice(0, 600) })) } : {}),
     memoria: (d.memoria ?? []).map((m) => m.texto),
     tareasPendientes: (d.tareas ?? []).filter((x) => !x.hecha).map((x) => ({ texto: x.texto, fecha: x.fecha ?? 'algún día', min: x.minutos, pospuesta: x.pospuesta })),
+    comidasHoy: d.meals.filter((m) => m.fecha === t).map((m) => `${m.comida ?? '?'}.ª ${m.hora ?? ''} ${m.nombre} ${m.prot} g P`),
     semanasEspeciales: (d.estados ?? []).filter((e) => e.hasta >= t).map((e) => ({ tipo: e.tipo, desde: e.desde, hasta: e.hasta })),
   })
 }

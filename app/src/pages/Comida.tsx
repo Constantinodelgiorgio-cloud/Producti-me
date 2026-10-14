@@ -4,14 +4,14 @@ import { useUI } from '../lib/ui'
 import { dayNutrition } from '../lib/logic'
 import { addDays, fmtShort, today, uid } from '../lib/date'
 import { ALIMENTOS, buscar, CATEGORIAS, macros } from '../lib/foods'
-import type { Alimento, CategoriaAlimento, ComidaGuardada, MomentoComida } from '../lib/types'
+import type { Alimento, CategoriaAlimento, ComidaGuardada } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Bar, Card, Field, NumInput, PageHead, parseNum, Seg } from '../components/ui'
 import { protPorComida } from '../lib/nutricion'
+import { ahoraHHMM, comidasDelDia, comidaSugerida, momentoPorHora, numeroComida } from '../lib/ayuno'
+import { AyunoCard } from '../components/Ayuno'
 
 type Sel = { key: string; foodId?: string; nombre: string; gramos?: number; kcal: number; prot: number; carb: number; grasa: number }
-const MOMENTOS: [MomentoComida, string][] = [['desayuno', 'Desayuno'], ['almuerzo', 'Almuerzo'], ['merienda', 'Merienda'], ['cena', 'Cena'], ['snack', 'Snack']]
-const momentoAhora = (): MomentoComida => { const h = new Date().getHours(); return h < 11 ? 'desayuno' : h < 15 ? 'almuerzo' : h < 19 ? 'merienda' : h < 23 ? 'cena' : 'snack' }
 const r1 = (n: number) => Math.round(n * 10) / 10
 const dec = (n: number) => String(r1(n)).replace('.', ',')
 
@@ -19,7 +19,10 @@ export default function Comida() {
   const d = useStore()
   const ui = useUI()
   const [fecha, setFecha] = useState(today())
-  const [momento, setMomento] = useState<MomentoComida>(momentoAhora())
+  // Las comidas se numeran por orden (1.ª, 2.ª…) con su hora, sin desayuno/almuerzo/cena.
+  const [hora, setHora] = useState(ahoraHHMM())
+  const [nElegida, setN] = useState<number | null>(null)
+  const comidaN = nElegida ?? comidaSugerida(d, fecha, hora)
   const [q, setQ] = useState('')
   const [tab, setTab] = useState<'recientes' | 'favoritos' | 'guardadas' | 'categorias'>('recientes')
   const [cat, setCat] = useState<CategoriaAlimento | null>(null)
@@ -49,9 +52,9 @@ export default function Comida() {
 
   const save = () => {
     const ids = sel.map(() => uid())
-    d.set((s) => ({ meals: [...s.meals, ...sel.map((f, i) => ({ id: ids[i], fecha, nombre: f.nombre, foodId: f.foodId, gramos: f.gramos, momento, kcal: Math.round(f.kcal), prot: r1(f.prot), carb: r1(f.carb), grasa: r1(f.grasa) }))] }))
+    d.set((s) => ({ meals: [...s.meals, ...sel.map((f, i) => ({ id: ids[i], fecha, nombre: f.nombre, foodId: f.foodId, gramos: f.gramos, comida: comidaN, hora, momento: momentoPorHora(hora), kcal: Math.round(f.kcal), prot: r1(f.prot), carb: r1(f.carb), grasa: r1(f.grasa) }))] }))
     ui.notify(`${sel.length > 1 ? `${sel.length} alimentos` : sel[0].nombre} · +${Math.round(add.kcal)} kcal · ${Math.round(add.prot)} g de proteína`, () => d.set((s) => ({ meals: s.meals.filter((m) => !ids.includes(m.id)) })))
-    setSel([]); setQ('')
+    setSel([]); setQ(''); setN(null); setHora(ahoraHHMM())
   }
   const guardarCombo = () => {
     if (!nombreCombo.trim() || !sel.length) return
@@ -67,10 +70,11 @@ export default function Comida() {
   }
   const dayMeals = d.meals.filter((m) => m.fecha === fecha)
   const metaComida = protPorComida(d)
-  // "Repetir lo de ayer" para el momento elegido: el atajo que más tiempo ahorra.
-  const ayerMomento = d.meals.filter((m) => m.fecha === addDays(fecha, -1) && (m.momento ?? 'snack') === momento)
+  // "Repetir lo de ayer" para la misma comida (1.ª, 2.ª…): el atajo que más tiempo ahorra.
+  const ayerMomento = d.meals.filter((m) => m.fecha === addDays(fecha, -1) && numeroComida(m) === comidaN)
+  const comidasHoy = comidasDelDia(d, fecha)
   const repetirAyer = () => {
-    const nuevas = ayerMomento.map((m) => ({ ...m, id: uid(), fecha }))
+    const nuevas = ayerMomento.map((m) => ({ ...m, id: uid(), fecha, comida: comidaN, hora, momento: momentoPorHora(hora) }))
     d.set((s) => ({ meals: [...s.meals, ...nuevas] }))
     const ids = nuevas.map((m) => m.id)
     ui.notify(`${nuevas.length} alimento${nuevas.length > 1 ? 's' : ''} de ayer · +${Math.round(nuevas.reduce((a, m) => a + m.kcal, 0))} kcal`, () => d.set((s) => ({ meals: s.meals.filter((x) => !ids.includes(x.id)) })))
@@ -81,8 +85,16 @@ export default function Comida() {
   return (
     <div className="view">
       <PageHead back eyebrow={`Registrar · ${fmtShort(fecha)}`} title="Comida" right={<input type="date" aria-label="Fecha" value={fecha} max={today()} onChange={(e) => setFecha(e.target.value || today())} style={{ width: 150 }} />} />
-      <div className="row" style={{ marginBottom: 12, justifyContent: 'space-between' }}><Seg label="Momento" value={momento} onChange={setMomento} options={MOMENTOS} />
-        {ayerMomento.length > 0 && <button className="btn btn-quiet btn-sm" onClick={repetirAyer}><Icon name="repeat" size={15} />Repetir {MOMENTOS.find((m) => m[0] === momento)?.[1].toLowerCase()} de ayer</button>}</div>
+      <div className="stack" style={{ gap: 12, marginBottom: 16 }}>
+        <div className="row" style={{ flexWrap: 'nowrap', gap: 10 }}>
+          <div className="comida-sel grow" role="group" aria-label="A qué comida va">
+            {comidasHoy.map((c) => <button key={c.n} className="chip" aria-pressed={comidaN === c.n} onClick={() => setN(c.n)}>{c.n}.ª{c.hora && <small>{c.hora}</small>}</button>)}
+            {(() => { const nueva = (comidasHoy.at(-1)?.n ?? 0) + 1; return <button className="chip" aria-pressed={comidaN === nueva} onClick={() => setN(nueva)}><Icon name="plus" size={12} />{nueva}.ª comida</button> })()}
+          </div>
+          <input type="time" className="hora-in" aria-label="Hora de la comida" value={hora} onChange={(e) => setHora(e.target.value || ahoraHHMM())} />
+        </div>
+        {ayerMomento.length > 0 && <button className="btn btn-quiet btn-sm" style={{ alignSelf: 'flex-start' }} onClick={repetirAyer}><Icon name="repeat" size={15} />Repetir la {comidaN}.ª comida de ayer</button>}
+      </div>
       <div className="two-col">
         <div className="stack">
           <div className="search big"><Icon name="search" size={18} /><input aria-label="Buscar un alimento" placeholder="Buscá: palta, bife, milanesa, café con leche…" value={q} onChange={(e) => { setQ(e.target.value); setOpen(null) }} autoComplete="off" />{q && <button className="icon-btn sm clear" aria-label="Borrar búsqueda" onClick={() => setQ('')}><Icon name="x" size={15} /></button>}</div>
@@ -129,17 +141,17 @@ export default function Comida() {
             {sel.length ? <div style={{ marginTop: 10 }}>{sel.map((f) => (
               <div className="list-row" key={f.key}><span className="grow">{f.nombre}{f.gramos ? <span className="cap"> · {dec(f.gramos)} g</span> : null}</span><span className="k">{Math.round(f.kcal)} kcal · {dec(f.prot)} g</span><button className="icon-btn sm" aria-label={`Quitar ${f.nombre}`} onClick={() => setSel((x) => x.filter((y) => y.key !== f.key))}><Icon name="x" size={15} /></button></div>
             ))}</div> : <p className="cap" style={{ marginTop: 10 }}>Elegí uno o varios alimentos. La proyección se actualiza antes de guardar.</p>}
-            <div className="savebar"><button className="btn btn-primary grow" disabled={!sel.length} onClick={save}>{sel.length ? `Guardar en ${MOMENTOS.find((m) => m[0] === momento)?.[1].toLowerCase()}` : 'Elegí un alimento'}</button></div>
+            <div className="savebar"><button className="btn btn-primary grow" disabled={!sel.length} onClick={save}>{sel.length ? `Guardar en la ${comidaN}.ª comida · ${hora}` : 'Elegí un alimento'}</button></div>
             {sel.length > 1 && <form className="row" style={{ flexWrap: 'nowrap', marginTop: 6 }} onSubmit={(e) => { e.preventDefault(); guardarCombo() }}><input className="grow" aria-label="Nombre de la comida guardada" placeholder="Guardar como… (ej. Desayuno habitual)" value={nombreCombo} onChange={(e) => setNombreCombo(e.target.value)} /><button className="btn btn-quiet" disabled={!nombreCombo.trim()}><Icon name="star" size={15} /></button></form>}
           </section>
+          {fecha === today() && <AyunoCard />}
           <Card title={fecha === today() ? 'Registrado hoy' : `Registrado el ${fmtShort(fecha)}`} icon="utensils">
-            {dayMeals.length === 0 ? <p className="cap">Todavía nada.</p> : MOMENTOS.map(([k, n]) => {
-              const ms = dayMeals.filter((m) => (m.momento ?? 'snack') === k)
-              if (!ms.length) return null
-              const pr = ms.reduce((a, m) => a + m.prot, 0)
-              return <div key={k} style={{ marginBottom: 8 }}><div className="eyebrow mom-head" style={{ margin: '6px 0 2px' }}><span>{n} · {Math.round(ms.reduce((a, m) => a + m.kcal, 0))} kcal</span>{k !== 'snack' && <span className={`prot-chip ${pr >= metaComida ? 'ok' : ''}`} title={`Proteína de esta comida (objetivo ≥ ${metaComida} g)`}>{pr >= metaComida ? `≥${metaComida} g P` : `${Math.round(pr)}/${metaComida} g P`}</span>}</div>
-                {ms.map((m) => <div className="list-row" key={m.id}><span className="grow">{m.nombre}{m.gramos ? <span className="cap"> · {dec(m.gramos)} g</span> : null}</span><span className="k">{m.kcal} kcal · {dec(m.prot)} g</span><button className="icon-btn sm" aria-label={`Borrar ${m.nombre}`} onClick={() => delMeal(m.id)}><Icon name="trash" size={15} /></button></div>)}</div>
-            })}
+            {dayMeals.length === 0 ? <p className="cap">Todavía nada.</p> : comidasHoy.map((c) => (
+              <div key={c.n} style={{ marginBottom: 8 }}>
+                <div className="eyebrow mom-head" style={{ margin: '6px 0 2px' }}><span>{c.n}.ª comida{c.hora ? ` · ${c.hora}` : ''} · {Math.round(c.kcal)} kcal</span><span className={`prot-chip ${c.prot >= metaComida ? 'ok' : ''}`} title={`Proteína de esta comida (objetivo ≥ ${metaComida} g)`}>{c.prot >= metaComida ? `≥${metaComida} g P` : `${Math.round(c.prot)}/${metaComida} g P`}</span></div>
+                {c.items.map((m) => <div className="list-row" key={m.id}><span className="grow">{m.nombre}{m.gramos ? <span className="cap"> · {dec(m.gramos)} g</span> : null}</span><span className="k">{m.kcal} kcal · {dec(m.prot)} g</span><button className="icon-btn sm" aria-label={`Borrar ${m.nombre}`} onClick={() => delMeal(m.id)}><Icon name="trash" size={15} /></button></div>)}
+              </div>
+            ))}
           </Card>
         </aside>
       </div>

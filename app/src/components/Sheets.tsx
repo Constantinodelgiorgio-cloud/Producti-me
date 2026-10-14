@@ -6,6 +6,7 @@ import { bedtimeFor, sleepHours } from '../lib/logic'
 import type { CheckIn, Pinned } from '../lib/types'
 import { Icon } from './Icon'
 import { LINEAS } from '../lib/seguridad'
+import { comidaSugerida, momentoPorHora } from '../lib/ayuno'
 import { Field, NumInput, Scale, VoiceText } from './ui'
 
 /** Hoja inferior (diálogo centrado en escritorio): arrastrar para cerrar, Esc, foco atrapado. */
@@ -66,7 +67,8 @@ export const RegistrarSheet = () => {
   for (const m of [...meals].reverse()) { if (!recent.find((r) => r.nombre === m.nombre)) recent.push(m); if (recent.length === 4) break }
   const repeat = (m: (typeof meals)[number]) => {
     const id = uid()
-    set((s) => ({ meals: [...s.meals, { ...m, id, fecha: today() }] }))
+    const hora = new Date().toTimeString().slice(0, 5)
+    set((s) => ({ meals: [...s.meals, { ...m, id, fecha: today(), hora, comida: comidaSugerida(s, today(), hora), momento: momentoPorHora(hora) }] }))
     ui.closeSheet()
     ui.notify(`${m.nombre} · +${m.kcal} kcal · ${m.prot} g de proteína`, () => set((s) => ({ meals: s.meals.filter((x) => x.id !== id) })))
   }

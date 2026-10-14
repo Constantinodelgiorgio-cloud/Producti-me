@@ -1023,3 +1023,30 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .veredicto b { color: var(--t1); }
 .veredicto.cuotas { box-shadow: inset 0 0 0 1px rgba(95,191,146,.4); }
 .veredicto.contado { box-shadow: inset 0 0 0 1px rgba(224,168,82,.4); }
+
+/* Ayuno */
+.ayuno.compacto { cursor: pointer; padding: 14px 16px; }
+.ay-top { display: flex; align-items: center; gap: 14px; }
+.ay-ring { --p: 0; position: relative; width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--tone) calc(var(--p) * 360deg), var(--surface-3) 0); }
+.ay-ring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--surface); }
+.ay-ring b { position: relative; font-size: 12.5px; font-weight: 650; text-align: center; line-height: 1.1; padding: 0 6px; }
+.ay-t { display: block; font-size: 14.5px; font-weight: 600; margin: 3px 0 2px; line-height: 1.35; }
+.ay-linea { position: relative; height: 6px; border-radius: 6px; background: var(--surface-3); margin: 26px 4px 8px; }
+.ay-linea > i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: var(--tone); }
+.ay-h { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--line-3); transform: translateX(-1px); }
+.ay-h.ok { background: var(--t1); }
+.ay-h.ideal { background: var(--tone); width: 3px; }
+.ay-h em { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 10.5px; font-family: var(--mono); color: var(--t3); white-space: nowrap; }
+.ay-hitos { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 6px; }
+.ay-hito { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); opacity: .75; }
+.ay-hito.ok { opacity: 1; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 35%, var(--line)); }
+.ay-hito > .num { font-size: 13px; font-weight: 600; min-width: 34px; color: var(--tone); }
+.ay-hito b { display: block; font-size: 13.5px; font-weight: 600; }
+.ay-hito small { display: block; font-size: 12.5px; color: var(--t2); margin-top: 3px; line-height: 1.45; }
+.ay-hito small.fuente { color: var(--t3); font-style: italic; }
+.ay-info { display: flex; flex-direction: column; gap: 10px; padding: 4px 4px 0; }
+/* Comidas numeradas */
+.comida-sel { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.comida-sel .chip { flex: none; }
+.comida-sel .chip small { opacity: .7; margin-left: 4px; font-family: var(--mono); font-size: 11px; }
+.hora-in { width: 112px !important; flex: none; min-height: 38px !important; padding: 4px 10px !important; }

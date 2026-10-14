@@ -9,6 +9,7 @@ import { resolverPropuesta, runTurn, userMessage, type ToolHost } from '../lib/c
 import { ALIMENTOS, resolver } from '../lib/foods'
 import type { Accion, Chat, ChatMsg, CuentaId, HabitState, MomentoComida, SocialLog } from '../lib/types'
 import { hayRiesgo } from '../lib/seguridad'
+import { comidaSugerida } from '../lib/ayuno'
 import { Icon } from '../components/Icon'
 import { Empty } from '../components/ui'
 
@@ -70,18 +71,20 @@ export default function Coach() {
         const ok: string[] = []
         const no: string[] = []
         const ids: string[] = []
+        const hora = new Date().toTimeString().slice(0, 5)
+        const comida = comidaSugerida(st, today(), hora)
         const momento = (input.momento as MomentoComida) ?? momentoComida()
         const meals = items.flatMap((it) => {
           const r = resolver(String(it.texto ?? ''), pool, it.gramos, it.cantidad)
           if (!r) { no.push(it.texto); return [] }
           const id = uid(); ids.push(id)
           ok.push(`${r.alimento.nombre} ${r.gramos} g (${r.kcal} kcal, ${r.prot} g P)`)
-          return [{ id, fecha: today(), nombre: r.alimento.nombre, foodId: r.alimento.id, gramos: r.gramos, momento, kcal: r.kcal, prot: r.prot, carb: r.carb, grasa: r.grasa }]
+          return [{ id, fecha: today(), nombre: r.alimento.nombre, foodId: r.alimento.id, gramos: r.gramos, momento, hora, comida, kcal: r.kcal, prot: r.prot, carb: r.carb, grasa: r.grasa }]
         })
         if (!meals.length) return { ok: false, texto: `No encontré en la base: ${no.join(', ')}. Pedile que lo cargue en Comida como alimento propio o que use otro nombre.` }
         st.set((s) => ({ meals: [...s.meals, ...meals] }))
         undos.set(key, () => useStore.getState().set((s) => ({ meals: s.meals.filter((m) => !ids.includes(m.id)) })))
-        return { ok: true, undoKey: key, texto: `Registrado (${momento}): ${ok.join('; ')}.${no.length ? ` No encontrado: ${no.join(', ')}.` : ''}` }
+        return { ok: true, undoKey: key, texto: `Registrado (${comida}.ª comida, ${hora}): ${ok.join('; ')}.${no.length ? ` No encontrado: ${no.join(', ')}.` : ''}` }
       }
       if (name === 'registrar_movimiento') {
         const monto = Number(input.monto)

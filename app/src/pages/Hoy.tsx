@@ -16,6 +16,7 @@ import { VueltaYEstado } from '../components/Estados'
 import { ListoCard } from '../components/Listo'
 import { TareasHoy } from '../components/Tareas'
 import { InsightsCard } from '../components/Insights'
+import { AyunoCard } from '../components/Ayuno'
 import { notasSueno } from '../lib/rendimiento'
 
 const greet = () => { const h = new Date().getHours(); return h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches' }
@@ -166,6 +167,7 @@ function Ahora() {
         )}
         <div className="sec" style={{ marginTop: 4 }}><span className="eyebrow">Cómo viene el día</span><span className="cap">tocá para ver la semana</span></div>
         <Signals />
+        <AyunoCard compacto />
         {avs.length > 0 && <><div className="sec"><span className="eyebrow">Requiere atención</span></div><Attention items={avs} /></>}
         {/* Nivel 3 · contexto */}
         <InsightsCard ocultarVacio />
