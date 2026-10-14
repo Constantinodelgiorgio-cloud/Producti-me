@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { dayNutrition, excusaDe, sleepHours, streak } from '../lib/logic'
+import { dayNutrition, excusaDe, fuerza, listoParaGraduar, RESERVAS_SEMANA, reservasUsadas, semanaDe, sleepHours, streak } from '../lib/logic'
 import { aplicarAcciones, CATEGORIAS_EXCUSA, validarExcusa } from '../lib/actions'
-import { today } from '../lib/date'
+import { today, uid } from '../lib/date'
 import type { CategoriaExcusa, Habit } from '../lib/types'
 import { HABIT_ICONS, Icon, habitIcon } from './Icon'
 import { useSetHabit } from './HabitRow'
@@ -39,8 +39,9 @@ export const HabitTile = ({ h, fecha, big }: { h: Habit; fecha: string; big?: bo
   const ref = useRef<HTMLDivElement>(null)
   const timer = useRef<number | null>(null)
   const long = useRef(false)
-  const p = st === 'hecho' ? 1 : st === 'minimo' ? 0.5 : ex ? (ex.alternativa ? 0.5 : 0) : Math.min(1, live?.p ?? 0)
-  const state = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : ex ? 'is-ex' : ''
+  const sem = h.porSemana ? semanaDe(d, h, fecha) : 0
+  const p = st === 'hecho' ? 1 : st === 'minimo' ? 0.5 : ex ? (ex.alternativa ? 0.5 : 0) : h.porSemana ? Math.min(1, sem / h.porSemana) : Math.min(1, live?.p ?? 0)
+  const state = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : st === 'reserva' || ex ? 'is-ex' : ''
   const C = 2 * Math.PI * 21
 
   const down = () => {
@@ -60,7 +61,7 @@ export const HabitTile = ({ h, fecha, big }: { h: Habit; fecha: string; big?: bo
           <span className="ht-ic">{st === 'hecho' ? <Icon name="check" size={20} stroke={2.4} /> : st === 'no' ? <Icon name="minus" size={18} /> : <Icon name={habitIcon(h)} size={20} />}</span>
         </span>
         <span className="ht-name">{short(h.nombre)}</span>
-        <span className="ht-meta num">{ex && !st ? 'excusado' : st === 'minimo' ? 'mínimo' : live ? live.label : `+${h.xp} XP`}</span>
+        <span className="ht-meta num">{st === 'reserva' ? 'reserva' : ex && !st ? 'excusado' : st === 'minimo' ? 'mínimo' : h.porSemana ? `${sem}/${h.porSemana} semana` : live ? live.label : `+${h.xp} XP`}</span>
         {s > 2 && <span className="ht-streak" title={`${s} días seguidos`}>{s}</span>}
       </button>
       <button className="ht-more" aria-label={`Más opciones: ${h.nombre}`} onClick={() => ui.openSheet('habito', `${h.id}|${fecha}`)}><Icon name="ellipsis" size={16} /></button>
@@ -75,7 +76,9 @@ export const HabitSheet = () => {
   const setHabit = useSetHabit()
   const [id, fecha = today()] = (ui.sheetArg ?? '').split('|')
   const h = d.habits.find((x) => x.id === id)
-  const [modo, setModo] = useState<'menu' | 'excusa' | 'icono'>('menu')
+  const [modo, setModo] = useState<'menu' | 'excusa' | 'icono' | 'aprender'>('menu')
+  const [que, setQue] = useState('')
+  const [distinto, setDistinto] = useState('')
   const [cat, setCat] = useState<CategoriaExcusa | ''>('')
   const [motivo, setMotivo] = useState('')
   const [alt, setAlt] = useState('')
@@ -84,7 +87,20 @@ export const HabitSheet = () => {
   const st = d.habitLog[fecha]?.[h.id]
   const ex = excusaDe(d, fecha, h.id)
   const s = streak(d, h.id)
-  const mark = (v: 'hecho' | 'minimo' | 'no') => { setHabit(h, fecha, v); ui.closeSheet() }
+  const usadas = reservasUsadas(d, h.id, fecha)
+  const F = fuerza(d, h)
+  const graduar = listoParaGraduar(d, h)
+  const mark = (v: 'hecho' | 'minimo' | 'no' | 'reserva') => {
+    setHabit(h, fecha, v)
+    // Después de un "no", una pregunta para aprender (no es una excusa y no cambia el puntaje).
+    if (v === 'no' && st !== 'no') { setModo('aprender'); return }
+    ui.closeSheet()
+  }
+  const guardarAprendizaje = () => {
+    if (que.trim()) d.set((s0) => ({ aprendizajes: [...(s0.aprendizajes ?? []), { id: uid(), fecha, habitId: h.id, que: que.trim(), distinto: distinto.trim() || undefined }] }))
+    ui.closeSheet()
+    if (que.trim()) ui.notify('Anotado. Mañana es otra oportunidad: con la versión mínima alcanza.')
+  }
   const excusar = () => {
     const e = validarExcusa({ motivo, categoria: cat || undefined })
     if (e) { setErr(e); return }
@@ -105,9 +121,15 @@ export const HabitSheet = () => {
       <div className="sheet-head" style={{ alignItems: 'flex-start' }}>
         <div className="row" style={{ flexWrap: 'nowrap', gap: 12 }}>
           <span className="h-ic lg"><Icon name={habitIcon(h)} size={22} /></span>
-          <div><h2>{h.nombre}</h2><span className="cap">{s > 0 ? `${s} días seguidos · ` : ''}+{h.xp} XP{h.minimo ? ` · mínimo: ${h.minimo}` : ''}</span></div>
+          <div><h2>{h.nombre}</h2><span className="cap">{s > 0 ? `${s} ${h.porSemana ? (s === 1 ? 'semana cumplida' : 'semanas seguidas') : s === 1 ? 'día' : 'días seguidos'} · ` : ''}+{h.xp} XP{h.minimo ? ` · mínimo: ${h.minimo}` : ''}</span></div>
         </div>
       </div>
+      <div className="h-stats">
+        <div><span className="cap">Fuerza del hábito</span><span className="val-m num">{Math.round(F * 100)}<span className="unit">%</span></span><span className="fz-bar"><i style={{ width: `${F * 100}%` }} /></span></div>
+        {h.porSemana ? <div><span className="cap">Esta semana</span><span className="val-m num">{semanaDe(d, h, fecha)}<span className="unit">/ {h.porSemana}</span></span></div>
+          : <div><span className="cap">Reservas</span><span className="val-m num">{RESERVAS_SEMANA - usadas}<span className="unit">/ {RESERVAS_SEMANA} esta semana</span></span></div>}
+      </div>
+      {h.ancla && <p className="ancla"><Icon name="link" size={14} />{h.ancla}</p>}
       {modo === 'menu' && <div className="stack" style={{ gap: 8 }}>
         {ex && <div className="ex-box"><Icon name="shield-alert" size={16} /><span className="grow"><b>Excusado · {ex.categoria}</b><span className="cap">{ex.motivo}{ex.alternativa ? ` · alternativa: ${ex.alternativa}` : ''}</span></span><button className="btn btn-ghost btn-sm" onClick={quitarExcusa}>Quitar</button></div>}
         <div className="opt-grid">
@@ -116,6 +138,12 @@ export const HabitSheet = () => {
           <button className={`opt ${st === 'no' ? 'on' : ''}`} onClick={() => mark('no')}><Icon name="minus" />No hecho</button>
           <button className="opt" onClick={() => setModo('excusa')}><Icon name="shield-alert" />Excusar</button>
         </div>
+        {!h.porSemana && <button className={`opt wide ${st === 'reserva' ? 'on' : ''}`} disabled={st !== 'reserva' && usadas >= RESERVAS_SEMANA} onClick={() => mark('reserva')}>
+          <Icon name="pause" /><span className="grow">Usar una reserva de emergencia<small>{st === 'reserva' ? 'Tocá para quitarla' : usadas >= RESERVAS_SEMANA ? 'Ya usaste las 2 de esta semana' : `Quedan ${RESERVAS_SEMANA - usadas} esta semana · no corta la racha ni cuenta como falta`}</small></span>
+        </button>}
+        {graduar && <button className="opt wide" onClick={() => { d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, etapa: 'mantenimiento' } : x) })); ui.closeSheet(); ui.notify(`"${h.nombre}" pasó a mantenimiento: ya es parte de vos`) }}>
+          <Icon name="trophy" /><span className="grow">Graduar este hábito<small>Fuerza {Math.round(F * 100)} % y más de 60 días: pasa a mantenimiento, con menos peso en tu día</small></span>
+        </button>}
         <div className="link-row as-field">
           <Icon name="clock" size={16} /><label htmlFor="h-hora" className="grow">Hora fija en la agenda</label>
           <input id="h-hora" type="time" value={h.hora ?? ''} onChange={(e) => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: e.target.value || undefined } : x) }))} />
@@ -130,6 +158,12 @@ export const HabitSheet = () => {
         <div className="field"><label htmlFor="ex-a">¿Hiciste algo en su lugar? (cuenta como mínima)</label><input id="ex-a" value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Ej. El gimnasio cerró, salí a correr 30 min" /></div>
         {err && <p className="err" role="alert">{err}</p>}
         <div className="row" style={{ flexWrap: 'nowrap' }}><button className="btn btn-ghost" onClick={() => setModo('menu')}>Volver</button><button className="btn btn-primary grow" onClick={excusar}>Registrar excusa</button></div>
+      </div>}
+      {modo === 'aprender' && <div className="stack" style={{ gap: 14 }}>
+        <p className="body-2">No pasa nada: un día suelto casi no afecta un hábito. Lo que importa es no faltar dos veces seguidas. Para aprender, no para juzgarte:</p>
+        <div className="field"><label htmlFor="ap-q">¿Qué se cruzó?</label><input id="ap-q" autoFocus value={que} onChange={(e) => setQue(e.target.value)} placeholder="Ej. salí tarde de la marmolería y llegué fundido" /></div>
+        <div className="field"><label htmlFor="ap-d">¿Qué vas a hacer distinto la próxima vez que pase?</label><input id="ap-d" value={distinto} onChange={(e) => setDistinto(e.target.value)} placeholder={h.minimo ? `Ej. hacer solo la versión mínima: ${h.minimo}` : 'Ej. hacerlo antes de salir'} /></div>
+        <div className="row" style={{ flexWrap: 'nowrap' }}><button className="btn btn-ghost" onClick={ui.closeSheet}>Omitir</button><button className="btn btn-primary grow" onClick={guardarAprendizaje}>Guardar</button></div>
       </div>}
       {modo === 'icono' && <div className="icon-pick">{HABIT_ICONS.map((n) => (
         <button key={n} aria-label={n} aria-pressed={habitIcon(h) === n} onClick={() => { d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, icono: n } : x) })); setModo('menu') }}><Icon name={n} size={20} /></button>

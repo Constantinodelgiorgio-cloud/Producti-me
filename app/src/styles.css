@@ -843,3 +843,36 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .ch-salud { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); padding-top: 14px; }
 .ch-salud .eyebrow { width: 100%; }
 .ch-salud span:not(.eyebrow) { display: inline-flex; align-items: center; gap: 6px; color: var(--t2); }
+
+/* Castigos: modo */
+.castigo-modo { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-2); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.castigo-modo b { display: block; font-size: 13.5px; font-weight: 600; }
+.castigo-modo small { display: block; font-size: 12px; color: var(--t3); margin-top: 2px; line-height: 1.4; }
+
+/* Hoja del hábito: fuerza, reservas, ancla */
+.h-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 16px; }
+.h-stats > div { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.fz-bar { height: 4px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+.fz-bar i { display: block; height: 100%; background: var(--tone); border-radius: 4px; }
+.ancla { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--t2); margin: -4px 0 16px; padding: 10px 12px; border-radius: var(--r-2); border: 1px dashed var(--line-2); }
+.ancla .ic { flex: none; margin-top: 2px; color: var(--tone); }
+.opt.wide { grid-column: 1 / -1; width: 100%; min-height: 60px; }
+.opt.wide small { display: block; font-size: 12px; font-weight: 400; color: var(--t3); margin-top: 2px; }
+.opt.wide .grow { text-align: left; }
+
+.note-box { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; line-height: 1.5; color: var(--t2); }
+.note-box b { color: var(--t1); font-weight: 600; }
+.note-box > .ic { flex: none; margin-top: 2px; color: var(--tone); }
+.note-box.warn { box-shadow: inset 0 0 0 1px rgba(224,168,82,.35); }
+.note-box.warn > .ic { color: var(--warn); }
+
+/* Vuelta y estados en Hoy */
+.vuelta { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-3); background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 9%, transparent), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, var(--line)); }
+.vuelta > .ic { flex: none; color: var(--tone); }
+.vuelta b { display: block; font-size: 14px; font-weight: 600; }
+.vuelta small { display: block; font-size: 12.5px; color: var(--t2); margin-top: 3px; line-height: 1.45; }
+.vuelta.ok { box-shadow: inset 0 0 0 1px rgba(95,191,146,.4); background: linear-gradient(90deg, rgba(95,191,146,.10), transparent); }
+.vuelta.ok > .ic { color: var(--success); }
+.estado-chip { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 99px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); font-size: 13px; color: var(--t2); }
+.estado-chip b { color: var(--t1); font-weight: 600; }
+.estado-chip > .ic { color: var(--tone); flex: none; }

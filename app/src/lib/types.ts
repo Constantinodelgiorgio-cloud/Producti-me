@@ -21,8 +21,23 @@ export interface Habit {
   icono?: string
   /** hora fija en la agenda (HH:MM); si falta, la agenda le busca un hueco */
   hora?: string
+  /** plan si-entonces: "Después de [ancla], hago [versión mínima] en [lugar]" */
+  ancla?: string
+  /** meta de N veces por semana en vez de todos los días que aplica */
+  porSemana?: number
+  /** en formación (se construye) o en mantenimiento (ya automático) */
+  etapa?: 'formacion' | 'mantenimiento'
+  /** fecha en que empezó (para la graduación) */
+  desde?: string
 }
-export type HabitState = 'hecho' | 'minimo' | 'no'
+/** reserva = salto de emergencia (2 por semana por hábito): no cuenta como falta */
+export type HabitState = 'hecho' | 'minimo' | 'no' | 'reserva'
+
+/** Período en el que ciertas áreas no cuentan (partido, parciales, lesión, enfermedad, semana pesada, viaje). */
+export type TipoEstado = 'partido' | 'parciales' | 'lesion' | 'enfermo' | 'semana pesada' | 'viaje'
+export interface EstadoPlan { id: string; tipo: TipoEstado; desde: string; hasta: string; areas: AreaId[]; nota?: string }
+/** Lo que se cruzó cuando un hábito no salió: para aprender, no es una excusa. */
+export interface Aprendizaje { id: string; fecha: string; habitId: string; que: string; distinto?: string }
 
 export interface CheckIn {
   fecha: string
@@ -89,7 +104,7 @@ export type ModoDiario = 'libre' | 'guiado' | 'profundo'
 export interface JournalEntry { id: string; fecha: string; texto: string; emocion?: string; modo?: ModoDiario; preguntas?: { p: string; r: string }[]; animo?: number; hora?: string }
 export interface Idea { id: string; fecha: string; titulo: string; nota?: string; estado: 'cruda' | 'investigando' | 'validando' | 'descartada' }
 
-export interface Penalty { id: string; fecha: string; motivo: string; tarea: string; hecho: boolean; creado?: string; vence?: string; cumplidoEl?: string; evidencia?: string; sancionado?: boolean }
+export interface Penalty { id: string; fecha: string; motivo: string; tarea: string; hecho: boolean; creado?: string; vence?: string; cumplidoEl?: string; evidencia?: string; sancionado?: boolean; clave?: string; reparadoEl?: string; reparacion?: string }
 /** Sanción por castigo vencido: sin permitidos y sin ganar XP entre `desde` y `hasta` (ISO). */
 export interface Sancion { id: string; desde: string; hasta: string; motivo: string }
 export interface Reward { id: string; fecha: string; motivo: string; premio: string; usado: boolean }
@@ -138,6 +153,8 @@ export interface Settings {
   coachLeeDiario?: boolean
   /** sincronizar los datos entre dispositivos usando el mismo script de Google */
   syncOn?: boolean
+  /** reparable: un castigo se anula volviendo (día ≥ 70 % o semana del área ≥ 75 %); duro: no se repara */
+  castigos?: 'reparable' | 'duro'
   /** cómo guía Cuerpo sin mirar la pantalla */
   guia?: { sonido: boolean; vibracion: boolean; voz: boolean }
 }

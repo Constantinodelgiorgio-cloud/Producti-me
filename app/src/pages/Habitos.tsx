@@ -6,10 +6,11 @@ import { fmtShort, today, uid, weekDays, weekStart } from '../lib/date'
 import { AREAS } from '../lib/seed'
 import type { AreaId, Habit, Momento } from '../lib/types'
 import { Icon } from '../components/Icon'
-import { Bar, Empty, Field, Medal, PageHead, Ring, Seg } from '../components/ui'
+import { Bar, Empty, Field, Medal, NumInput, PageHead, Ring, Seg } from '../components/ui'
 import { HabitRow } from '../components/HabitRow'
 import { HabitTile } from '../components/HabitTile'
 import { CastigosPanel } from '../components/Castigos'
+import { EstadosPanel } from '../components/Estados'
 import { useScrollToSub } from '../components/useScrollTo'
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
@@ -89,6 +90,7 @@ export default function Habitos() {
 
         <aside className="stack">
           <CastigosPanel />
+          <EstadosPanel />
           <div className="sec" style={{ marginTop: 6 }}><span className="eyebrow">Podio de la semana</span>{wm.globalMedal && <Medal m={wm.globalMedal} />}</div>
           {wm.global === null ? <div className="panel"><Empty icon="trophy" title="Las medallas empiezan con tu primer registro">Cada área recibe Oro (90 %), Plata (75 %), Bronce (60 %) o Bajo meta. Los hábitos excusados no cuentan.</Empty></div> : (
             <div className="panel">
@@ -113,11 +115,16 @@ export default function Habitos() {
 function Editor({ onClose }: { onClose: () => void }) {
   const d = useStore()
   const ui = useUI()
-  const add = () => d.set((s) => ({ habits: [...s.habits, { id: uid(), area: 'mente', nombre: 'Nuevo hábito', dias: [], xp: 10, activo: true }] }))
+  const add = () => d.set((s) => ({ habits: [...s.habits, { id: uid(), area: 'mente', nombre: 'Nuevo hábito', dias: [], xp: 10, activo: true, desde: today() }] }))
+  const enFormacion = d.habits.filter((h) => h.activo && (h.etapa ?? 'formacion') === 'formacion').length
   return (
     <div className="view">
       <PageHead eyebrow="Configuración" title="Editar hábitos" right={<button className="btn btn-primary btn-sm" onClick={onClose}>Listo</button>} />
       <div className="stack">
+        <div className={`note-box ${enFormacion > 6 ? 'warn' : ''}`}>
+          <Icon name="lightbulb" size={16} />
+          <span><b>{enFormacion} hábitos en formación.</b> Un hábito tarda en promedio 2 meses en volverse automático (el ejercicio, más). Construir de a 3–5 a la vez funciona mejor: pasá a "mantenimiento" los que ya te salen solos. Los planes si-entonces ("después de X, hago Y") duplican las chances de cumplir.</span>
+        </div>
         {d.habits.map((h) => <HabitEditor key={h.id} h={h} onDelete={async () => {
           if (await ui.confirm({ title: `¿Borrar "${h.nombre}"?`, body: 'Se borra el hábito. Los días ya registrados dejan de contar para las medallas.', confirm: 'Borrar', danger: true }))
             d.set((s) => ({ habits: s.habits.filter((x) => x.id !== h.id) }))
@@ -138,8 +145,11 @@ function HabitEditor({ h, onDelete }: { h: Habit; onDelete: () => void }) {
         <Field label="Área" id={`a-${h.id}`}><select id={`a-${h.id}`} value={h.area} onChange={(e) => up({ area: e.target.value as AreaId })}>{AREAS.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
         <Field label="Momento del día" id={`m-${h.id}`}><select id={`m-${h.id}`} value={momentoDe(h)} onChange={(e) => up({ momento: e.target.value as Momento })}>{MOMENTOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select></Field>
         <Field label="Versión mínima" id={`v-${h.id}`}><input id={`v-${h.id}`} value={h.minimo ?? ''} placeholder="Para días malos" onChange={(e) => up({ minimo: e.target.value || undefined })} /></Field>
-        <Field label="XP" id={`x-${h.id}`}><input id={`x-${h.id}`} type="number" inputMode="numeric" value={h.xp} onChange={(e) => up({ xp: Number(e.target.value) })} /></Field>
+        <Field label="XP" id={`x-${h.id}`}><NumInput id={`x-${h.id}`} decimals={false} value={h.xp} onValue={(n) => up({ xp: n ?? 0 })} /></Field>
+        <Field label="Meta semanal (veces)" id={`w-${h.id}`}><NumInput id={`w-${h.id}`} decimals={false} placeholder="Todos los días" value={h.porSemana ?? ''} onValue={(n) => up({ porSemana: n && n > 0 && n < 7 ? n : undefined })} /></Field>
+        <Field label="Etapa" id={`e-${h.id}`}><select id={`e-${h.id}`} value={h.etapa ?? 'formacion'} onChange={(e) => up({ etapa: e.target.value as Habit['etapa'] })}><option value="formacion">En formación</option><option value="mantenimiento">Mantenimiento (ya automático)</option></select></Field>
       </div>
+      <Field label="Plan si-entonces (opcional)" id={`an-${h.id}`}><input id={`an-${h.id}`} value={h.ancla ?? ''} placeholder={`Después de [salir de la marmolería], hago ${h.minimo ? `[${h.minimo}]` : '[la versión mínima]'} en [lugar]`} onChange={(e) => up({ ancla: e.target.value || undefined })} /></Field>
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div className="days" role="group" aria-label="Días en que aplica">
           {DIAS.map((l, i) => {

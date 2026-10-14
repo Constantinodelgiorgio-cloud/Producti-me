@@ -59,6 +59,9 @@ export default function App() {
     if (!ready) return
     const run = () => { const patch = processRules(useStore.getState()); if (patch) useStore.getState().set(() => patch) }
     // Primero se traen los datos de los otros dispositivos; recién después se evalúan las reglas del día.
+    // Al marcar hábitos se revisa enseguida si algún castigo quedó anulado por volver.
+    let rt: number | undefined
+    const unsubRules = useStore.subscribe((s, p) => { if (s.habitLog !== p.habitLog || s.estados !== p.estados) { window.clearTimeout(rt); rt = window.setTimeout(run, 400) } })
     const stop = iniciarSync()
     const stopSalud = iniciarSalud()
     void sincronizar().finally(run)
@@ -68,7 +71,7 @@ export default function App() {
     const id = window.setInterval(() => { run(); mail() }, 10 * 60 * 1000)
     const vis = () => { if (document.visibilityState === 'visible') { run(); mail() } }
     document.addEventListener('visibilitychange', vis)
-    return () => { stop(); stopSalud(); window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
+    return () => { unsubRules(); stop(); stopSalud(); window.clearInterval(id); document.removeEventListener('visibilitychange', vis) }
   }, [ready])
   return ready ? <Shell /> : <Splash />
 }

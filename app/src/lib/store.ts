@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware'
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'
 import type {
-  Alimento, Aporte, BodyEntry, CareLog, Cambio, Chat, CheckIn, ComidaGuardada, Exam, Habit, HabitState, Idea, JournalEntry, Meal, MoneyMove,
+  Alimento, Aporte, Aprendizaje, EstadoPlan, BodyEntry, CareLog, Cambio, Chat, CheckIn, ComidaGuardada, Exam, Habit, HabitState, Idea, JournalEntry, Meal, MoneyMove,
   Pendiente, Penalty, Photo, PlanDia, Posicion, Profile, Review, Reward, Ruta, Salud, Sancion, SesionCuerpo, Settings, Snapshot, SocialLog, StudySession, Subject, Workout,
 } from './types'
 import { HABITS, PROFILE, RUTAS, SUBJECTS } from './seed'
@@ -60,6 +60,9 @@ export interface Data {
   cuerpo: SesionCuerpo[]
   pasos: Record<string, number> // fecha → pasos
   salud: Record<string, Salud> // fecha → datos automáticos de la app Salud
+  // ---- v4 ----
+  estados: EstadoPlan[]
+  aprendizajes: Aprendizaje[]
 }
 
 export const initialData = (): Data => ({
@@ -108,6 +111,8 @@ export const initialData = (): Data => ({
   cuerpo: [],
   pasos: {},
   salud: {},
+  estados: [],
+  aprendizajes: [],
 })
 
 export const BACKUP_KEY = 'producti-me-respaldo-v1'

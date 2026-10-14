@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { excusaDe, streak } from '../lib/logic'
+import { excusaDe, semanaDe, streak } from '../lib/logic'
 import type { Habit, HabitState } from '../lib/types'
 import { Icon, habitIcon } from './Icon'
 
@@ -28,7 +28,7 @@ export const useSetHabit = () => {
       anchor.appendChild(p)
       setTimeout(() => p.remove(), 750)
     }
-    notify(`${h.nombre} · ${next === 'hecho' ? 'hecho' : next === 'minimo' ? 'versión mínima' : 'no hecho'}`, () => write(prev), next === 'no' ? 'neutral' : 'ok')
+    notify(`${h.nombre} · ${next === 'hecho' ? 'hecho' : next === 'minimo' ? 'versión mínima (sostiene la racha)' : next === 'reserva' ? 'reserva de emergencia usada' : 'no hecho'}`, () => write(prev), next === 'no' || next === 'reserva' ? 'neutral' : 'ok')
   }
 }
 
@@ -48,8 +48,9 @@ export const HabitRow = ({ h, fecha, compact }: { h: Habit; fecha: string; compa
   const fg = useRef<HTMLDivElement>(null)
   const bg = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x0: number; dx: number; locked: boolean } | null>(null)
-  const cls = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : ex ? 'is-ex' : ''
-  const meta = ex && !st ? `excusado · ${ex.motivo}` : [h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} días seguidos`].filter(Boolean).join(' · ')
+  const sem = useStore((x) => (h.porSemana ? semanaDe(x, h, fecha) : 0))
+  const cls = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : st === 'reserva' || ex ? 'is-ex' : ''
+  const meta = st === 'reserva' ? 'reserva de emergencia' : ex && !st ? `excusado · ${ex.motivo}` : [h.porSemana && `${sem}/${h.porSemana} esta semana`, h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} ${h.porSemana ? 'semanas' : 'días'} seguid${h.porSemana ? 'as' : 'os'}`].filter(Boolean).join(' · ')
 
   const onDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' || (e.target as HTMLElement).closest('button')) return

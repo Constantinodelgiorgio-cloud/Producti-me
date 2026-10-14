@@ -12,6 +12,7 @@ import { Attention, Bar, Card, Empty, Medal, Notes, Ring, Seg } from '../compone
 import { CheckBox, HabitRow } from '../components/HabitRow'
 import { HabitTile } from '../components/HabitTile'
 import { CastigoBand } from '../components/Castigos'
+import { VueltaYEstado } from '../components/Estados'
 
 const greet = () => { const h = new Date().getHours(); return h < 6 ? 'Buenas noches' : h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches' }
 const stamp = () => {
@@ -136,6 +137,8 @@ function Ahora() {
             <span className="grow" /><span>Nivel {L.lvl} · {L.league.name}</span>
           </div>
         </section>
+
+        <VueltaYEstado />
 
         <CastigoBand />
 

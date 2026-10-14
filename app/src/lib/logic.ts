@@ -1,5 +1,5 @@
 import type { Data } from './store'
-import type { AgendaItem, AreaId, Habit, Medal, Momento, Penalty, Snapshot } from './types'
+import type { AgendaItem, AreaId, EstadoPlan, Habit, Medal, Momento, Penalty, Snapshot, TipoEstado } from './types'
 import { addDays, diffDays, dow, iso, today, weekDays, weekStart } from './date'
 import { AREAS, PENALTIES } from './seed'
 
@@ -14,12 +14,40 @@ export const agendaDe = (d: Pick<Data, 'planDia' | 'profile'>, fecha: string): A
   [...(d.planDia?.[fecha]?.agenda ?? d.profile.agenda[dow(fecha)] ?? [])].sort((a, b) => a.hora.localeCompare(b.hora))
 export const excusaDe = (d: Pick<Data, 'planDia'>, fecha: string, habitId: string) => d.planDia?.[fecha]?.excusas?.[habitId]
 
+// ---------- Estados planificados: períodos en que ciertas áreas no cuentan ----------
+export const ESTADOS: Record<TipoEstado, { label: string; icon: string; areas: AreaId[]; hint: string }> = {
+  partido: { label: 'Partido', icon: 'trophy', areas: ['estudio', 'trabajo', 'estetica'], hint: 'El día del partido no cuentan estudio, trabajo ni estética. Se aplica solo si la agenda dice "partido".' },
+  parciales: { label: 'Semana de parciales', icon: 'book-open', areas: ['social', 'disfrute', 'trabajo', 'estetica'], hint: 'Mientras estudiás para parciales no cuentan amigos, disfrute, trabajo ni estética.' },
+  lesion: { label: 'Lesionado', icon: 'heart-pulse', areas: ['fisico'], hint: 'No cuenta lo físico. La movilidad y la respiración siguen sumando si las hacés.' },
+  enfermo: { label: 'Enfermo', icon: 'bed', areas: ['fisico', 'estudio', 'trabajo', 'social', 'disfrute', 'estetica', 'finanzas', 'mente'], hint: 'Solo cuentan salud y sueño. Recuperarte es el hábito.' },
+  'semana pesada': { label: 'Semana pesada en la marmolería', icon: 'hammer', areas: ['estudio', 'disfrute', 'estetica'], hint: 'No cuentan estudio extra, disfrute ni estética.' },
+  viaje: { label: 'Viaje', icon: 'compass', areas: ['fisico', 'estudio', 'trabajo', 'estetica', 'finanzas'], hint: 'Cuentan salud, mente y amigos.' },
+}
+/** Estados que cubren una fecha. El día de partido de la agenda se aplica solo. */
+export const estadosDe = (d: Pick<Data, 'estados' | 'planDia' | 'profile'>, f: string): EstadoPlan[] => {
+  const out = (d.estados ?? []).filter((e) => e.desde <= f && e.hasta >= f)
+  if (!out.some((e) => e.tipo === 'partido') && agendaDe(d, f).some((a) => a.intensidad === 'partido'))
+    out.push({ id: `auto-partido-${f}`, tipo: 'partido', desde: f, hasta: f, areas: ESTADOS.partido.areas })
+  return out
+}
+const neutralPorEstado = (d: Data, f: string, h: Habit) => estadosDe(d, f).some((e) => e.areas.includes(h.area))
+
+/** Reservas de emergencia: 2 por hábito por semana. Un salto con reserva no cuenta como falta. */
+export const RESERVAS_SEMANA = 2
+export const reservasUsadas = (d: Pick<Data, 'habitLog'>, habitId: string, fecha: string) =>
+  weekDays(weekStart(fecha)).filter((f) => d.habitLog[f]?.[habitId] === 'reserva').length
+
 /**
- * Puntaje de un hábito en una fecha. Un hábito excusado no cuenta (sale del total);
- * si la excusa trae una alternativa realizada, cuenta como versión mínima.
+ * Puntaje de un hábito en una fecha (null = no cuenta). No cuentan: las reservas de emergencia,
+ * los días cubiertos por un estado planificado, las excusas sin alternativa y los días sin marcar
+ * de un hábito con meta semanal (se evalúa por semana). La versión mínima vale la mitad.
  */
 export const habitScore = (d: Data, f: string, h: Habit): number | null => {
   const st = d.habitLog[f]?.[h.id]
+  if (st === 'reserva') return null
+  if (st === 'hecho' || st === 'minimo') return score(st)
+  if (h.porSemana) return null
+  if (neutralPorEstado(d, f, h)) return null
   const ex = excusaDe(d, f, h.id)
   if (ex && !st) return ex.alternativa ? 0.5 : null
   return score(st)
@@ -31,17 +59,67 @@ export const compliance = (d: Data, fechas: string[], area?: AreaId) => {
   let done = 0
   const t = today()
   // Solo cuentan días desde que se usa la app; hoy cuenta recién cuando hay algo marcado.
-  for (const f of fechas.filter((x) => x >= d.inicio && (x < t || d.habitLog[x]))) {
+  const dias = fechas.filter((x) => x >= d.inicio && (x < t || d.habitLog[x]))
+  for (const f of dias) {
     for (const h of habitsFor(d.habits, f)) {
       if (area && h.area !== area) continue
+      if (h.porSemana) continue
       const sc = habitScore(d, f, h)
       if (sc === null) continue
       total++
       done += sc
     }
   }
+  // Metas semanales ("N veces por semana"): se espera la parte proporcional a los días transcurridos.
+  const semanas = new Map<string, string[]>()
+  for (const f of dias) semanas.set(weekStart(f), [...(semanas.get(weekStart(f)) ?? []), f])
+  for (const h of d.habits.filter((x) => x.activo && x.porSemana && (!area || x.area === area))) {
+    for (const [, fs] of semanas) {
+      const aplica = fs.filter((f) => !neutralPorEstado(d, f, h) && d.habitLog[f]?.[h.id] !== 'reserva')
+      if (!aplica.length) continue
+      const esperado = Math.min(h.porSemana!, (h.porSemana! * aplica.length) / 7)
+      const hechos = aplica.reduce((a, f) => a + (habitScore(d, f, h) ?? 0), 0)
+      total += esperado
+      done += Math.min(hechos, esperado)
+    }
+  }
   return total === 0 ? null : done / total
 }
+
+/** Veces que se hizo un hábito semanal en la semana de la fecha. */
+export const semanaDe = (d: Pick<Data, 'habitLog'>, h: Habit, fecha: string) =>
+  weekDays(weekStart(fecha)).filter((f) => { const st = d.habitLog[f]?.[h.id]; return st === 'hecho' || st === 'minimo' }).length
+
+/**
+ * Fuerza del hábito (como Loop Habit Tracker): sube con cada día hecho y baja de a poco con cada falta,
+ * sin volver a cero. Cada día pierde la mitad de su peso en unos 13 días. La versión mínima sostiene.
+ * Los días que no cuentan (reserva, estado, excusa) no la mueven.
+ */
+export const fuerza = (d: Data, h: Habit, hasta = today()): number => {
+  const m = Math.pow(0.5, 1 / 13)
+  const t = today()
+  let s = 0
+  const desde = [d.inicio, h.desde].filter(Boolean).sort().at(-1) as string
+  for (let f = desde, i = 0; f <= hasta && i < 800; f = addDays(f, 1), i++) {
+    if (f === t && !d.habitLog[f]?.[h.id]) continue
+    let v: number
+    if (h.porSemana) {
+      const ult7 = Array.from({ length: 7 }, (_, k) => addDays(f, -k)).filter((x) => x >= desde)
+      const hechos = ult7.filter((x) => { const st = d.habitLog[x]?.[h.id]; return st === 'hecho' || st === 'minimo' }).length
+      v = Math.min(1, hechos / h.porSemana)
+    } else {
+      if (!(h.dias.length === 0 || h.dias.includes(dow(f)))) continue
+      if (habitScore(d, f, h) === null) continue
+      const st = d.habitLog[f]?.[h.id]
+      v = st === 'hecho' || st === 'minimo' ? 1 : 0
+    }
+    s = s * m + v * (1 - m)
+  }
+  return s
+}
+/** Un hábito fuerte y con más de 60 días está listo para pasar a mantenimiento. */
+export const listoParaGraduar = (d: Data, h: Habit) =>
+  (h.etapa ?? 'formacion') === 'formacion' && fuerza(d, h) >= 0.8 && diffDays(today(), [d.inicio, h.desde].filter(Boolean).sort().at(-1) as string) >= 60
 
 export const medalOf = (c: number | null): Medal | null =>
   c === null ? null : c >= 0.9 ? 'oro' : c >= 0.75 ? 'plata' : c >= 0.6 ? 'bronce' : 'malo'
@@ -63,16 +141,27 @@ export const weekMedals = (d: Data, start: string, upTo = today()) => {
   return { areas: out, global, globalMedal: medalOf(global) }
 }
 
+/** Racha: días seguidos hechos (la versión mínima sostiene; los días que no cuentan no la cortan). */
 export const streak = (d: Data, habitId: string) => {
+  const h = d.habits.find((x) => x.id === habitId)
+  if (!h) return 0
   let n = 0
+  if (h.porSemana) {
+    // Semanas seguidas cumpliendo la meta (la actual cuenta si ya se cumplió).
+    let w = weekStart(today())
+    if (semanaDe(d, h, w) < h.porSemana) w = addDays(w, -7)
+    for (let i = 0; i < 60 && w >= weekStart(d.inicio); i++, w = addDays(w, -7)) {
+      if (semanaDe(d, h, w) >= h.porSemana) n++
+      else break
+    }
+    return n
+  }
   let f = today()
   if (!d.habitLog[f]?.[habitId]) f = addDays(f, -1)
-  for (let i = 0; i < 400; i++) {
-    const h = d.habits.find((x) => x.id === habitId)
-    if (!h) break
+  for (let i = 0; i < 400 && f >= d.inicio; i++) {
     const applies = h.dias.length === 0 || h.dias.includes(dow(f))
     const st = d.habitLog[f]?.[habitId]
-    if (applies) {
+    if (applies && habitScore(d, f, h) !== null) {
       if (st === 'hecho' || st === 'minimo') n++
       else break
     }
@@ -89,6 +178,27 @@ export const sessionXp = (s: { minutos: number; tipo: string; evidencia?: { veri
   return Math.round(s.minutos / 3) + (s.evidencia.verificado ? 40 : 25)
 }
 export const XP_TEST = { aprobado: 150, intento: 20 }
+/** Premio por volver: el día después de uno flojo (< 50 %), llegar al 60 % suma XP extra. */
+export const VUELTA_XP = 40
+export const esDiaDeVuelta = (d: Data, f: string) => {
+  if (f <= d.inicio) return false
+  const prev = compliance(d, [addDays(f, -1)])
+  const cur = compliance(d, [f])
+  return prev !== null && prev < 0.5 && cur !== null && cur >= 0.6
+}
+export const diasDeVuelta = (d: Data) => {
+  const out: string[] = []
+  for (let f = addDays(d.inicio, 1), t = today(), i = 0; f <= t && i < 400; f = addDays(f, 1), i++) if (esDiaDeVuelta(d, f)) out.push(f)
+  return out
+}
+/** Días seguidos sin registrar nada antes de hoy (para la bienvenida de vuelta). */
+export const diasSinRegistrar = (d: Pick<Data, 'habitLog' | 'checkins' | 'inicio'>) => {
+  const t = today()
+  const usados = [...Object.keys(d.habitLog).filter((f) => Object.keys(d.habitLog[f] ?? {}).length), ...Object.keys(d.checkins)].filter((f) => f < t && f >= d.inicio).sort()
+  const ult = usados.at(-1)
+  if (!ult) return 0
+  return diffDays(t, ult) - 1
+}
 /** Recuperación: poco XP, pero constante (respirar 5 min vale lo mismo que un vaso de agua más). */
 export const cuerpoXp = (c: { tipo: string; minutos: number }) =>
   c.tipo === 'cardio' || c.tipo === 'caminata' ? Math.min(30, Math.round(c.minutos / 3)) : Math.min(15, 5 + Math.round(c.minutos / 2))
@@ -135,6 +245,7 @@ export const totalXp = (d: Data) => {
   xp += (d.cuerpo ?? []).filter((c) => ok(c.fecha)).reduce((a, c) => a + cuerpoXp(c), 0)
   xp += Object.entries(d.pasos ?? {}).filter(([f, n]) => ok(f) && n >= (d.profile.pasosObjetivo ?? 8000)).length * 10
   for (const r of d.rutas ?? []) for (const m of r.metas) if (m.test && ok(m.test.fecha)) xp += m.test.aprobado ? XP_TEST.aprobado : XP_TEST.intento
+  xp += diasDeVuelta(d).filter(ok).length * VUELTA_XP
   xp += d.xpAdjust.filter((x) => x.fecha >= d.inicio).reduce((a, x) => a + x.xp, 0)
   return Math.max(0, Math.round(xp))
 }
@@ -166,7 +277,7 @@ export const SANCION_HOURS = 72
 /** El id sale de la regla que lo generó: si dos dispositivos lo generan, la sincronización lo une en uno. */
 const nuevoCastigo = (clave: string, motivo: string, tarea: string): Penalty => {
   const now = Date.now()
-  return { id: `pen-${clave}`, fecha: today(), motivo, tarea, hecho: false, creado: new Date(now).toISOString(), vence: new Date(now + PENALTY_HOURS * 3600e3).toISOString() }
+  return { id: `pen-${clave}`, clave, fecha: today(), motivo, tarea, hecho: false, creado: new Date(now).toISOString(), vence: new Date(now + PENALTY_HOURS * 3600e3).toISOString() }
 }
 /** Tiempo restante de un castigo: fracción 0–1 que queda y si venció. */
 export const penaltyTime = (p: Penalty, now = Date.now()) => {
@@ -180,6 +291,14 @@ export const fmtLeft = (ms: number) => {
   const h = Math.floor(ms / 3600e3)
   const m = Math.floor((ms % 3600e3) / 60e3)
   return h >= 1 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
+}
+/** Cómo se anula un castigo volviendo (null si no se puede). */
+export const comoReparar = (d: Pick<Data, 'settings'>, p: Penalty): string | null => {
+  if (d.settings.castigos === 'duro') return null
+  const clave = p.clave ?? (p.id.startsWith('pen-') ? p.id.slice(4) : '')
+  if (clave.startsWith('day:')) return 'Se anula solo si un día llegás al 70 % de tus hábitos antes de que venza.'
+  if (clave.startsWith('week:')) return `Se anula solo si esta semana llegás al 75 % en ${AREAS.find((a) => a.id === clave.split(':')[2])?.nombre ?? 'esa área'}.`
+  return null
 }
 /** Castigos pendientes, del más urgente al menos urgente. */
 export const castigosPendientes = (d: Pick<Data, 'penalties'>) =>
@@ -246,6 +365,30 @@ export const processRules = (d: Data): Partial<Data> | null => {
     }
   }
 
+  // Reparación: volver anula el castigo (salvo en modo duro). Un día ≥ 70 % repara el castigo de un día flojo;
+  // la semana actual del área ≥ 75 % (con 2 días o más) repara el de una semana mala.
+  if (d.settings.castigos !== 'duro') {
+    const sem = weekSoFar(t)
+    for (let i = 0; i < penalties.length; i++) {
+      const p = penalties[i]
+      if (p.hecho || penaltyTime(p).vencido) continue
+      const clave = p.clave ?? (p.id.startsWith('pen-') ? p.id.slice(4) : undefined)
+      if (!clave) continue
+      let rep: string | undefined
+      if (clave.startsWith('day:')) {
+        const desde = clave.slice(4)
+        for (let f = addDays(desde, 1); f <= t && !rep; f = addDays(f, 1)) {
+          const c = compliance(d, [f])
+          if (c !== null && c >= 0.7) rep = `Volviste: ${Math.round(c * 100)} % ${f === t ? 'hoy' : `el ${f.slice(8)}/${f.slice(5, 7)}`}`
+        }
+      } else if (clave.startsWith('week:')) {
+        const area = clave.split(':')[2] as AreaId
+        const c = compliance(d, sem, area)
+        if (sem.length >= 2 && c !== null && c >= 0.75) rep = `Semana recuperada: ${Math.round(c * 100)} % en ${AREAS.find((a) => a.id === area)?.nombre ?? area}`
+      }
+      if (rep) { penalties[i] = { ...p, hecho: true, reparadoEl: new Date().toISOString(), reparacion: rep }; tocado = true }
+    }
+  }
   if (processed.size === d.processed.length && !tocado) return null
   return { processed: [...processed], penalties, rewards, xpAdjust, sanciones }
 }

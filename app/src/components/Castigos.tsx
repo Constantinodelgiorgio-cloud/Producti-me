@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { castigosPendientes, fmtLeft, penaltyTime, sancionActiva, SANCION_HOURS } from '../lib/logic'
+import { castigosPendientes, comoReparar, fmtLeft, penaltyTime, sancionActiva, SANCION_HOURS } from '../lib/logic'
 import { fmtShort, today, uid } from '../lib/date'
 import type { Penalty } from '../lib/types'
 import { Icon } from './Icon'
@@ -58,7 +58,7 @@ export const CastigoBand = () => {
       <Hourglass frac={t.frac} size={22} />
       <span className="grow">
         <b>{p.tarea}</b>
-        <span className="cap">Castigo{list.length > 1 ? ` · ${list.length} pendientes` : ''} · vence en {fmtLeft(t.left)}</span>
+        <span className="cap">Castigo{list.length > 1 ? ` · ${list.length} pendientes` : ''} · vence en {fmtLeft(t.left)}{comoReparar(d, p) ? ' · se anula si volvés' : ''}</span>
         <span className="pen-time" aria-hidden="true"><i /></span>
       </span>
       <Icon name="chevron-right" size={16} />
@@ -74,6 +74,8 @@ export const CastigosPanel = () => {
   const [nuevo, setNuevo] = useState('')
   const pend = castigosPendientes(d)
   const vencidos = d.penalties.filter((p) => !p.hecho && penaltyTime(p).vencido).slice(-5).reverse()
+  const reparados = d.penalties.filter((p) => p.reparadoEl).slice(-5).reverse()
+  const duro = d.settings.castigos === 'duro'
   const san = sancionActiva(d)
   const rewards = d.rewards.filter((r) => !r.usado)
   const bloqueado = pend.length > 0 || !!san
@@ -81,20 +83,25 @@ export const CastigosPanel = () => {
     <section className="panel pad pen-panel" id="sec-castigos">
       <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2"><Icon name="hourglass" size={16} />Castigos</h2><span className="cap">{pend.length ? `${pend.length} pendiente${pend.length > 1 ? 's' : ''}` : 'al día'}</span></div>
       {san && <div className="pen-row sancion"><Icon name="lock" size={18} /><span className="grow"><b>Sanción activa</b><span className="cap">{san.motivo}. Sin XP y sin permitidos hasta {new Date(san.hasta).toLocaleString('es-AR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })}.</span></span></div>}
-      {pend.length === 0 && !san && <p className="body-2">Sin castigos pendientes. Cuando aparezca uno tenés 48 h para cumplirlo; si vence, pasás {SANCION_HOURS} h sin ganar XP ni usar permitidos.</p>}
+      {pend.length === 0 && !san && <p className="body-2">Sin castigos pendientes. Cuando aparezca uno tenés 48 h para cumplirlo{duro ? '' : ' o anularlo volviendo (un día al 70 %, o la semana del área al 75 %)'}; si vence, pasás {SANCION_HOURS} h sin ganar XP ni usar permitidos.</p>}
       <div className="pen-list">
         {pend.map((p) => {
           const t = penaltyTime(p)
           return (
             <button key={p.id} className={`pen-row ${urg(t.frac)}`} onClick={() => ui.openSheet('castigo', p.id)}>
               <Hourglass frac={t.frac} size={26} />
-              <span className="grow"><b>{p.tarea}</b><span className="cap">{p.motivo}</span></span>
+              <span className="grow"><b>{p.tarea}</b><span className="cap">{p.motivo}{comoReparar(d, p) ? ' · se anula si volvés' : ''}</span></span>
               <span className="pen-left num">{fmtLeft(t.left)}</span>
             </button>
           )
         })}
       </div>
+      {reparados.length > 0 && <details style={{ marginTop: 8 }}><summary>Anulados por volver · {reparados.length}</summary>{reparados.map((p) => <div className="list-row" key={p.id}><Icon name="rotate-ccw" size={14} /><span className="grow">{p.tarea}<small className="cap" style={{ display: 'block' }}>{p.reparacion}</small></span><span className="cap">{fmtShort(p.fecha)}</span></div>)}</details>}
       {vencidos.length > 0 && <details style={{ marginTop: 8 }}><summary>Vencidos · {vencidos.length}</summary>{vencidos.map((p) => <div className="list-row" key={p.id}><span className="grow">{p.tarea}</span><span className="cap">{fmtShort(p.fecha)}</span></div>)}</details>}
+      <div className="castigo-modo">
+        <span className="grow"><b>{duro ? 'Modo duro' : 'Modo reparable'}</b><small>{duro ? 'Los castigos no se anulan: o los cumplís o vence la sanción.' : 'Volver anula el castigo. Mantiene la vara alta sin convertir un día malo en una semana perdida.'}</small></span>
+        <button role="switch" aria-checked={duro} aria-label="Modo duro" className="switch" onClick={() => d.set((s) => ({ settings: { ...s.settings, castigos: duro ? 'reparable' : 'duro' } }))}><i /></button>
+      </div>
       <div className="sec" style={{ margin: '16px 0 6px' }}><span className="eyebrow">Permitidos</span><span className="cap">{bloqueado ? 'bloqueados' : `${rewards.length} disponibles`}</span></div>
       {rewards.length === 0 ? <p className="cap">Se ganan con semanas de Oro y con cada punto de grasa corporal que bajás.</p> : rewards.map((r) => (
         <div className="attn-row" style={{ padding: '10px 0' }} key={r.id}>
@@ -142,6 +149,7 @@ export const CastigoSheet = () => {
         <h2 className="pen-title">{p.tarea}</h2>
         <div className="kv"><span className="cap">Por qué</span><span>{p.motivo}</span></div>
         <div className="kv"><span className="cap">Desde</span><span>{fmtShort(p.fecha)}{p.vence ? ` · vence ${new Date(p.vence).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}</span></div>
+        {comoReparar(d, p) && <div className="kv"><span className="cap">Para anularlo</span><span>{comoReparar(d, p)}</span></div>}
         <div className="kv"><span className="cap">Si vence</span><span>{SANCION_HOURS} h sin ganar XP y sin permitidos.</span></div>
         <div className="kv"><span className="cap">Mientras tanto</span><span>Permitidos bloqueados.</span></div>
         <div className="field" style={{ marginTop: 14 }}><label htmlFor="pen-ev">Evidencia (opcional): cómo lo cumpliste</label><input id="pen-ev" value={ev} onChange={(e) => setEv(e.target.value)} placeholder="Ej. 50 burpees en 4 series, a las 19:30" /></div>
