@@ -8,6 +8,7 @@ import type { Review } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Card, Medal, PageHead, VoiceText } from '../components/ui'
 import { LineC } from '../components/charts'
+import { InsightsCard, MesCard } from '../components/Insights'
 
 export default function Revision() {
   const d = useStore()
@@ -18,6 +19,7 @@ export default function Revision() {
   const [coach, setCoach] = useState('')
   const [loading, setLoading] = useState(false)
   const wm = weekMedals(d, ws)
+  const aprend = (d.aprendizajes ?? []).filter((a) => a.fecha >= ws)
   const entrenos = d.workouts.filter((w) => w.fecha >= ws).length
   const est = d.study.filter((s) => s.fecha >= ws).reduce((a, s) => a + s.minutos, 0) / 60
   const juntadas = d.social.filter((s) => s.fecha >= ws && s.tipo === 'juntada').length
@@ -46,6 +48,12 @@ export default function Revision() {
       <div className="two-col">
         <div className="stack">
           <div className="kpis">{kpis.map(([k, v]) => <div className="kpi" key={k}><span className="cap">{k}</span><span className="val-m">{v}</span></div>)}</div>
+          <InsightsCard />
+          {aprend.length > 0 && <section className="panel pad"><h2 className="h2"><Icon name="notebook-pen" size={16} />Lo que se cruzó esta semana</h2>
+            {aprend.map((a) => <div className="list-row" key={a.id}><span className="grow">{d.habits.find((h) => h.id === a.habitId)?.nombre ?? 'Hábito'}<small className="cap" style={{ display: 'block' }}>{a.que}{a.distinto ? ` → ${a.distinto}` : ''}</small></span><span className="cap">{fmtShort(a.fecha)}</span></div>)}
+            <p className="cap" style={{ marginTop: 8 }}>Si algo se repite, es un problema de diseño del día, no de voluntad: ajustá el horario o la versión mínima.</p>
+          </section>}
+          <MesCard />
           <Card title="Reflexión" icon="notebook-pen">
             <div className="stack" style={{ gap: 14 }}>
               <VoiceText id="r-bien" label="¿Qué salió bien?" lang={d.settings.lang} value={r.bien} onChange={(v) => setR({ ...r, bien: v })} rows={3} />

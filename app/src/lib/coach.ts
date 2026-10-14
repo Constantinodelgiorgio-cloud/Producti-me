@@ -25,7 +25,9 @@ Cómo trabajar:
 - Usá siempre las herramientas para cambiar algo; nunca digas que cambiaste algo sin llamarlas.
 - Agenda, hábitos excusados, momentos y prioridades van en UNA llamada a proponer_cambios por pedido (podés incluir varias acciones y varias fechas). Constantino ve la propuesta y la aplica o la descarta: no le pidas confirmación por texto.
 - Si un bloque se libera, sugerí en la misma propuesta cómo usarlo (estudio, gimnasio, descanso) según sus prioridades.
-- Comidas, gastos, ingresos, contactos y hábitos hechos se registran directo con sus herramientas (tienen Deshacer).
+- Comidas, gastos, ingresos, contactos, tareas y hábitos hechos se registran directo con sus herramientas (tienen Deshacer).
+- Cuando aprendas algo duradero y útil de él (qué le funciona, horarios reales, objetivos), guardalo con "recordar". Tu memoria está en el contexto: usala.
+- Si un día tiene más tareas que tiempo libre, decilo y proponé qué pasar a otro día. Ante una falta, no sermonees: la versión mínima y no faltar dos veces seguidas es lo que sostiene un hábito.
 - Excusas: solo aceptás excusas fundamentadas y específicas, de causa externa, compromiso real, salud o fuerza mayor ("no fui a la facultad porque tuve reunión con proveedores de la marmolería"; "el gimnasio cerró por refacciones pero salí a correr"). Quedarse dormido, falta de ganas, olvido o cansancio sin causa NO son excusas: respondé que no se excusa y ofrecé la versión mínima o reprogramar. Si hizo una alternativa, ponela en "alternativa".
 - Usá los ids de hábitos y las horas exactas de la agenda que aparecen en el contexto. Las fechas van en formato AAAA-MM-DD.
 - Después de usar herramientas, respondé en 1–3 frases: qué propusiste o registraste y por qué. Nada de listas largas.
@@ -92,7 +94,10 @@ export const chatContext = (d: Data) => {
     resumen: JSON.parse(buildContext(d)),
     plan7dias: dias,
     habitos: otros,
-    ...(d.settings.coachLeeDiario ? { diarioUltimos: d.journal.slice(-3).map((j) => ({ f: j.fecha, texto: j.texto.slice(0, 600) })) } : {}),
+    ...(d.settings.coachLeeDiario ? { diarioUltimos: d.journal.filter((j) => !j.privada).slice(-3).map((j) => ({ f: j.fecha, texto: j.texto.slice(0, 600) })) } : {}),
+    memoria: (d.memoria ?? []).map((m) => m.texto),
+    tareasPendientes: (d.tareas ?? []).filter((x) => !x.hecha).map((x) => ({ texto: x.texto, fecha: x.fecha ?? 'algún día', min: x.minutos, pospuesta: x.pospuesta })),
+    semanasEspeciales: (d.estados ?? []).filter((e) => e.hasta >= t).map((e) => ({ tipo: e.tipo, desde: e.desde, hasta: e.hasta })),
   })
 }
 
@@ -168,8 +173,18 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'marcar_habito',
-    description: 'Marca un hábito de hoy como hecho, versión mínima o no hecho.',
-    input_schema: { type: 'object', properties: { habito_id: { type: 'string' }, estado: { type: 'string', enum: ['hecho', 'minimo', 'no'] }, fecha: { type: 'string' } }, required: ['habito_id', 'estado'] },
+    description: 'Marca un hábito de hoy como hecho, versión mínima, no hecho o reserva (salto de emergencia: 2 por semana por hábito, no cuenta como falta).',
+    input_schema: { type: 'object', properties: { habito_id: { type: 'string' }, estado: { type: 'string', enum: ['hecho', 'minimo', 'no', 'reserva'] }, fecha: { type: 'string' } }, required: ['habito_id', 'estado'] },
+  },
+  {
+    name: 'registrar_tarea',
+    description: 'Agrega una tarea puntual (no un hábito). Sin fecha = algún día. Estimá los minutos con realismo.',
+    input_schema: { type: 'object', properties: { texto: { type: 'string' }, fecha: { type: 'string', description: 'AAAA-MM-DD' }, minutos: { type: 'integer' } }, required: ['texto'] },
+  },
+  {
+    name: 'recordar',
+    description: 'Guarda en tu memoria un dato duradero y útil sobre Constantino (preferencias, contexto, objetivos, lo que le funciona o no). Él la ve y la puede editar. Nada sensible del diario.',
+    input_schema: { type: 'object', properties: { texto: { type: 'string', description: 'Una frase corta' } }, required: ['texto'] },
   },
 ]
 

@@ -101,10 +101,27 @@ export default function Coach() {
         undos.set(key, () => useStore.getState().set((s) => ({ social: s.social.filter((x) => x.id !== id) })))
         return { ok: true, undoKey: key, texto: `${input.tipo ?? 'Contacto'} con ${con} registrado.` }
       }
+      if (name === 'registrar_tarea') {
+        const texto = String(input.texto ?? '').trim()
+        if (!texto) return { ok: false, texto: 'Falta la tarea.' }
+        const id = uid()
+        const fecha = typeof input.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.fecha) ? input.fecha : undefined
+        st.set((s) => ({ tareas: [...(s.tareas ?? []), { id, texto, fecha, creada: today(), minutos: Number(input.minutos) || undefined }] }))
+        undos.set(key, () => useStore.getState().set((s) => ({ tareas: s.tareas.filter((x) => x.id !== id) })))
+        return { ok: true, undoKey: key, texto: `Tarea agregada${fecha ? ` para el ${fecha}` : ' (algún día)'}: ${texto}.` }
+      }
+      if (name === 'recordar') {
+        const texto = String(input.texto ?? '').trim().slice(0, 240)
+        if (!texto) return { ok: false, texto: 'Vacío.' }
+        const id = uid()
+        st.set((s) => ({ memoria: [...(s.memoria ?? []), { id, texto, fecha: today(), origen: 'coach' }] }))
+        undos.set(key, () => useStore.getState().set((s) => ({ memoria: s.memoria.filter((x) => x.id !== id) })))
+        return { ok: true, undoKey: key, texto: `Recordado: ${texto}` }
+      }
       if (name === 'marcar_habito') {
         const h = st.habits.find((x) => x.id === input.habito_id)
         const est = input.estado as HabitState
-        if (!h || !['hecho', 'minimo', 'no'].includes(est)) return { ok: false, texto: `Hábito o estado inválido (${String(input.habito_id)}).` }
+        if (!h || !['hecho', 'minimo', 'no', 'reserva'].includes(est)) return { ok: false, texto: `Hábito o estado inválido (${String(input.habito_id)}).` }
         const fecha = typeof input.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.fecha) ? input.fecha : today()
         const prev = st.habitLog[fecha]?.[h.id]
         const write = (v?: HabitState) => useStore.getState().set((s) => { const day = { ...(s.habitLog[fecha] ?? {}) }; if (v) day[h.id] = v; else delete day[h.id]; return { habitLog: { ...s.habitLog, [fecha]: day } } })
@@ -193,7 +210,7 @@ export default function Coach() {
           <h1 className="h1">¿Qué cambió hoy?</h1>
         </div>
         <div className="top-actions">
-          <button className="icon-btn" aria-label="Historial de cambios" aria-pressed={showLog} onClick={() => setShowLog(!showLog)}><Icon name="history" size={18} /></button>
+          <button className="icon-btn" aria-label="Historial y memoria del coach" aria-pressed={showLog} onClick={() => setShowLog(!showLog)}><Icon name="history" size={18} /></button>
           <button className="icon-btn" aria-label="Nueva conversación" onClick={nueva}><Icon name="plus" size={18} /></button>
         </div>
       </header>
@@ -205,6 +222,7 @@ export default function Coach() {
       </button>
 
       {showLog && <CambiosLog />}
+      {showLog && <MemoriaPanel />}
 
       {!d.settings.apiKey ? (
         <section className="panel" style={{ marginTop: 16 }}><Empty icon="sparkles" title="Conectá tu clave para hablar con el coach" action={<button className="btn btn-primary" onClick={() => ui.go('ajustes')}>Ir a Ajustes</button>}>El coach usa la API de Anthropic con tu clave, guardada solo en este dispositivo. Puede reorganizar tu agenda, excusar hábitos con motivo y registrar comidas, gastos y contactos.</Empty></section>
@@ -271,6 +289,29 @@ function Msg({ m, d, sel, onSel, onDecide, onRevert, busy }: { m: ChatMsg; d: Da
         </div>
       )}
       {p.estado === 'aplicada' && <div className="row pr-actions"><button className="btn btn-ghost btn-sm" onClick={() => onRevert(m)}><Icon name="rotate-ccw" size={14} />Revertir</button></div>}
+    </section>
+  )
+}
+
+/** Lo que el coach sabe de vos: visible, editable y borrable. */
+function MemoriaPanel() {
+  const d = useStore()
+  const [t, setT] = useState('')
+  const mem = d.memoria ?? []
+  return (
+    <section className="panel pad" style={{ marginTop: 12 }}>
+      <div className="sec" style={{ margin: '0 0 8px' }}><h2 className="h2"><Icon name="brain" size={16} />Lo que el coach sabe de vos</h2><span className="cap">{mem.length}</span></div>
+      <p className="cap" style={{ marginBottom: 10 }}>El coach lo usa en cada conversación. Borrá o corregí lo que no esté bien.</p>
+      {mem.map((m) => (
+        <div className="list-row" key={m.id}>
+          <input className="grow mem-in" aria-label="Recuerdo" value={m.texto} onChange={(e) => d.set((s) => ({ memoria: s.memoria.map((x) => (x.id === m.id ? { ...x, texto: e.target.value, origen: 'vos' } : x)) }))} />
+          <button className="icon-btn sm" aria-label="Borrar recuerdo" onClick={() => d.set((s) => ({ memoria: s.memoria.filter((x) => x.id !== m.id) }))}><Icon name="trash" size={15} /></button>
+        </div>
+      ))}
+      <form className="row" style={{ flexWrap: 'nowrap', marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); if (!t.trim()) return; d.set((s) => ({ memoria: [...(s.memoria ?? []), { id: uid(), texto: t.trim(), fecha: today(), origen: 'vos' }] })); setT('') }}>
+        <input className="grow" aria-label="Agregar algo que el coach tenga que saber" placeholder="Algo que el coach tenga que saber…" value={t} onChange={(e) => setT(e.target.value)} />
+        <button className="btn btn-quiet" disabled={!t.trim()}>Agregar</button>
+      </form>
     </section>
   )
 }

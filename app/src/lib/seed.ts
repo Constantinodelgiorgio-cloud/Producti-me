@@ -152,4 +152,20 @@ export const PREGUNTAS_DIARIO: Record<string, string[]> = {
   Orgullo: ['¿Qué hiciste hoy de lo que estés orgulloso?', '¿Qué te costó y lo hiciste igual?', '¿Quién te ayudó a llegar hasta acá?'],
   Futuro: ['¿Qué querés que sea distinto en 3 meses?', '¿Qué decisión estás postergando?', '¿Cuál es el paso más chico que podés dar mañana?'],
   Amistad: ['¿Con quién te sentiste cerca esta semana?', '¿Qué amistad querés cuidar más y cómo?', '¿Qué plan podrías proponer este fin de semana?'],
+  'Desde afuera': ['Contá lo que pasó en tercera persona, como si lo vieras desde afuera: ¿qué le pasa a Constantino?', '¿Qué vería un amigo que lo quiere y lo conoce bien?', '¿Qué va a importar de esto dentro de un año?'],
+  'Mejor futuro': ['Imaginá que dentro de un año todo salió tan bien como podía salir. ¿Cómo es un día tuyo?', '¿Con quién estás, qué hacés y cómo te sentís en el cuerpo?', '¿Qué hiciste este año para llegar ahí?'],
 }
+/** Pregunta de cierre de las sesiones profundas: sentido en vez de seguir dándole vueltas. */
+export const CIERRE_PROFUNDO = '¿Qué entendés ahora que antes no? ¿Qué vas a hacer con eso?'
+
+/** Medidor de ánimo de 2 ejes (agrado × energía), con palabras rioplatenses por cuadrante. */
+export const PALABRAS_ANIMO: Record<'alto-mal' | 'bajo-mal' | 'bajo-bien' | 'alto-bien', string[]> = {
+  'alto-mal': ['Enojado', 'Irritado', 'Frustrado', 'Resentido', 'Impotente', 'Indignado', 'Harto', 'Ansioso', 'Nervioso', 'Estresado', 'Desbordado', 'Celoso'],
+  'bajo-mal': ['Triste', 'Solo', 'Desganado', 'Cansado', 'Desanimado', 'Decepcionado', 'Vacío', 'Apagado', 'Aburrido', 'Culpable', 'Avergonzado', 'Estancado'],
+  'bajo-bien': ['Tranquilo', 'En paz', 'Relajado', 'Agradecido', 'Satisfecho', 'Aliviado', 'Contento', 'Sereno', 'Conectado', 'Cómodo'],
+  'alto-bien': ['Entusiasmado', 'Motivado', 'Orgulloso', 'Feliz', 'Con energía', 'Confiado', 'Enfocado', 'Inspirado', 'Divertido', 'Eufórico'],
+}
+/** Familia del enojo: distinguirlas ayuda a regularlo. */
+export const TIPOS_ENOJO = ['Irritado', 'Frustrado', 'Resentido', 'Impotente', 'Humillado', 'Traicionado', 'Celoso', 'Indignado', 'Harto', 'Herido']
+/** Los 7 tipos de charla que más acercan (Hall). */
+export const CHARLAS = ['Ponerse al día', 'Charla profunda', 'Joda', 'Mostrar que me importa', 'Escuchar', 'Pedir opinión', 'Un cumplido']

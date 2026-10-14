@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, diffDays, fmtShort, today, uid, weekStart } from '../lib/date'
-import { EMOCIONES, PREGUNTAS_DIARIO } from '../lib/seed'
-import type { Idea, JournalEntry, ModoDiario, SocialLog } from '../lib/types'
+import { CHARLAS, CIERRE_PROFUNDO, EMOCIONES, PREGUNTAS_DIARIO } from '../lib/seed'
+import { animoDe, EnojoFlow, MoodMeter } from '../components/Animo'
+import type { Idea, JournalEntry, ModoDiario, Persona, SocialLog } from '../lib/types'
 import { hayRiesgo } from '../lib/seguridad'
 import { Icon } from '../components/Icon'
-import { Bar, Card, Empty, Field, PageHead, Seg } from '../components/ui'
+import { Bar, Card, Empty, Field, NumInput, PageHead, Seg } from '../components/ui'
 import { BarC, LineC, PieC } from '../components/charts'
 
 type Tab = 'amigos' | 'diario' | 'ideas' | 'apoyo'
@@ -59,6 +60,7 @@ function Amigos() {
           </div>
           <p className="body-2" style={{ marginTop: 14 }}>Ser parte se construye con presencia repetida: aparecer, proponer, sostener. El sábado de rugby cuenta: quedate al tercer tiempo.</p>
         </section>
+        <Creencia />
         <section className="panel pad" id="sec-amigos">
           <h2 className="h2" style={{ marginBottom: 12 }}><Icon name="message-circle" size={16} />Registrar contacto</h2>
           <form className="form-grid" onSubmit={save}>
@@ -67,30 +69,45 @@ function Amigos() {
             <datalist id="personas">{personas.map((p) => <option key={p} value={p} />)}</datalist>
             <Field label="Fecha" id="so-f"><input id="so-f" type="date" value={l.fecha} max={today()} onChange={(e) => setL({ ...l, fecha: e.target.value })} /></Field>
             <Field label="Cómo fue" id="so-n"><input id="so-n" value={l.nota ?? ''} onChange={(e) => setL({ ...l, nota: e.target.value })} /></Field>
+            {(l.tipo === 'juntada' || l.tipo === 'llamada') && <Field label="Tiempo juntos (min)" id="so-m"><NumInput id="so-m" decimals={false} value={l.minutos ?? ''} onValue={(n) => setL({ ...l, minutos: n })} /></Field>}
+            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Tipo de charla (opcional)</label><div className="chips" style={{ flexWrap: 'wrap' }}>{CHARLAS.map((c) => <button type="button" key={c} className="chip" aria-pressed={l.charla === c} onClick={() => setL({ ...l, charla: l.charla === c ? undefined : c })}>{c}</button>)}</div></div>
             <button className="btn btn-primary" disabled={!l.con.trim()}>Guardar</button>
           </form>
         </section>
       </div>
       <aside className="stack">
         <Card title="Últimas 8 semanas" icon="layout-grid"><BarC data={chart} x="semana" stacked ys={[{ key: 'juntadas', name: 'Juntadas', color: '#8EA8FF' }, { key: 'contactos', name: 'Contactos', color: '#4A5160' }]} height={180} /></Card>
-        <Card title="Con quién hablaste" icon="users">
-          {personas.length === 0 ? <p className="cap">Todavía nada. Empezá hoy con un mensaje al grupo.</p> : personas.map((p) => {
-            const ult = d.social.filter((s) => s.con === p).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
-            const n = diffDays(today(), ult.fecha)
-            return <div className="list-row" key={p}><span className="grow">{p}</span><span className="cap" style={{ color: n > 10 ? 'var(--warn)' : undefined }}>hace {n} d · {ult.tipo}</span></div>
-          })}
-        </Card>
+        <Personas onAnotar={(con) => { setL({ ...l, con }); document.getElementById('sec-amigos')?.scrollIntoView({ behavior: 'smooth' }) }} />
+        <Gratitud />
       </aside>
     </div>
   )
 }
 
 const BORRADOR = 'pm-diario-borrador'
-type Draft = { modo: ModoDiario; tema?: string; preguntas: { p: string; r: string }[]; texto: string; animo?: number; emo?: string }
+type Draft = { modo: ModoDiario; tema?: string; preguntas: { p: string; r: string }[]; texto: string; animo?: number; emo?: string; v?: number; a?: number; inicio?: number }
 const vacio = (modo: ModoDiario, tema?: string, pregunta?: string): Draft => ({
   modo, tema, texto: '',
-  preguntas: modo === 'guiado' ? PREGUNTAS_DIARIO.Guiado.map((p) => ({ p, r: '' })) : modo === 'profundo' && pregunta ? [{ p: pregunta, r: '' }] : modo === 'profundo' && tema ? PREGUNTAS_DIARIO[tema].map((p) => ({ p, r: '' })) : [],
+  inicio: Date.now(),
+  // Las sesiones profundas cierran con una pregunta de sentido, no con "escribí más".
+  preguntas: modo === 'guiado' ? PREGUNTAS_DIARIO.Guiado.map((p) => ({ p, r: '' })) : modo === 'profundo' && pregunta ? [{ p: pregunta, r: '' }, { p: CIERRE_PROFUNDO, r: '' }] : modo === 'profundo' && tema ? [...PREGUNTAS_DIARIO[tema], CIERRE_PROFUNDO].map((p) => ({ p, r: '' })) : [],
 })
+const STOP = new Set('pensando pienso pensar pensaba sentir sentia sentirme siento quiero queria tengo tenia hablar dijo dije porque cuando donde sobre entre hasta desde hacia todos todas mucho mucha muchos tengo tiene tenía estoy estaba siento sentí hacer hice quiero quería puedo puede nunca siempre otra otro otros nada algo alguien ahora antes después mejor peor igual bien pasó pasa estar sería cosas cosa veces vida día días semana hoy mañana aunque mismo misma también entonces pero como solo sola esto esta este eso esas esos ellos ellas nosotros fuera dentro'.split(' '))
+/** Tema que vuelve: palabra (o nombre) presente en 3 de las últimas 4 entradas profundas o guiadas. */
+const temaRepetido = (js: JournalEntry[]) => {
+  const ult = js.filter((j) => j.modo === 'profundo' || j.modo === 'guiado' || j.modo === 'libre').slice(-4)
+  if (ult.length < 3) return null
+  const norm = (w: string) => w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const contar = (sacar: (t: string) => string[]) => {
+    const c = new Map<string, number>()
+    for (const j of ult) for (const w of new Set(sacar(j.texto))) c.set(w, (c.get(w) ?? 0) + 1)
+    return [...c.entries()].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  }
+  // Primero personas o lugares (palabras con mayúscula que no abren una oración); después temas.
+  const nombre = contar((t) => (t.match(/(?<![.!?¿¡]\s|^)\b[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}/g) ?? []).filter((w) => !STOP.has(norm(w))))
+  if (nombre) return nombre
+  return contar((t) => (norm(t).match(/[a-zñ]{5,}/g) ?? []).filter((w) => !STOP.has(w) && !/(ando|endo|iendo|aba|aban|ia|ian)$/.test(w)))
+}
 const leerBorrador = (): Draft | null => { try { const x = localStorage.getItem(BORRADOR); return x ? JSON.parse(x) as Draft : null } catch { return null } }
 const preguntaDelDia = () => { const all = Object.entries(PREGUNTAS_DIARIO).filter(([k]) => k !== 'Guiado').flatMap(([, v]) => v); return all[Number(today().replace(/-/g, '')) % all.length] }
 
@@ -98,7 +115,9 @@ function Diario() {
   const d = useStore()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [leer, setLeer] = useState<JournalEntry | null>(null)
+  const [enojo, setEnojo] = useState(false)
   const borrador = leerBorrador()
+  const tema = temaRepetido(d.journal)
   const last30 = Array.from({ length: 30 }, (_, i) => addDays(today(), i - 29)).map((f) => {
     const c = d.checkins[f]
     const j = d.journal.filter((x) => x.fecha === f && x.animo).at(-1)
@@ -118,7 +137,10 @@ function Diario() {
             <button className="jh-mode" onClick={() => setDraft(vacio('libre'))}><Icon name="feather" size={20} /><b>Libre</b><small>Hoja en blanco</small></button>
             <button className="jh-mode" onClick={() => setDraft(vacio('guiado'))}><Icon name="list" size={20} /><b>Guiado</b><small>3 preguntas cortas</small></button>
             <button className="jh-mode" onClick={() => setDraft({ ...vacio('profundo'), tema: '' })}><Icon name="orbit" size={20} /><b>Profundo</b><small>Una pregunta que importa</small></button>
+            <button className="jh-mode" onClick={() => setEnojo(true)}><Icon name="flame" size={20} /><b>Enojo</b><small>Bajar la temperatura primero</small></button>
           </div>
+          {tema && <div className="tema-rep"><Icon name="repeat" size={16} /><span className="grow">Volviste varias veces a <b>«{tema}»</b>. Darle más vueltas suele hundir; mirarlo desde afuera o imaginar el mejor futuro, no.</span>
+            <div className="row" style={{ gap: 6 }}><button className="chip" onClick={() => setDraft(vacio('profundo', 'Desde afuera'))}>Desde afuera</button><button className="chip" onClick={() => setDraft(vacio('profundo', 'Mejor futuro'))}>Mejor futuro</button></div></div>}
           {hoyEscrito && <p className="cap" style={{ marginTop: 12 }}><Icon name="circle-check" size={13} /> Ya escribiste hoy. Podés volver cuando quieras.</p>}
         </section>
         <section>
@@ -139,11 +161,13 @@ function Diario() {
           <LineC data={last30} x="f" ys={[{ key: 'animo', name: 'Ánimo', color: '#C59AD6' }, { key: 'estres', name: 'Estrés', color: '#E0A852' }, { key: 'enojo', name: 'Enojo', color: '#E5766F' }, { key: 'energia', name: 'Energía ×2', color: '#C9D0DC' }]} height={220} />
           <p className="cap" style={{ marginTop: 6 }}>Últimos 30 días, desde tus check-ins y el diario.</p>
         </Card>
+        <Pixeles />
         {emos.length > 0 && <Card title="Emociones del mes" icon="brain"><PieC data={emos} /></Card>}
       </aside>
       {/* El modo escritura se monta sobre toda la app (tapa la barra inferior). */}
       {draft && createPortal(<Writer initial={draft} onClose={() => setDraft(null)} />, document.querySelector('.shell') ?? document.body)}
       {leer && createPortal(<Reader j={leer} onClose={() => setLeer(null)} />, document.querySelector('.shell') ?? document.body)}
+      {enojo && createPortal(<EnojoFlow onClose={() => setEnojo(false)} />, document.querySelector('.shell') ?? document.body)}
     </div>
   )
 }
@@ -160,6 +184,9 @@ function Writer({ initial, onClose }: { initial: Draft; onClose: () => void }) {
   useEffect(() => { try { localStorage.setItem(BORRADOR, JSON.stringify(dr)) } catch { /* sin almacenamiento */ } }, [dr])
   useEffect(() => { const on = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', on); return () => window.removeEventListener('keydown', on) }, [onClose])
   const eligiendo = dr.modo === 'profundo' && !dr.preguntas.length
+  const [, tick] = useState(0)
+  useEffect(() => { const id = window.setInterval(() => tick((x) => x + 1), 30000); return () => window.clearInterval(id) }, [])
+  const largo = dr.modo === 'profundo' && dr.inicio && Date.now() - dr.inicio > 15 * 60e3
   const preguntaIA = async () => {
     setBusy(true); setErr('')
     try { const { preguntaProfunda } = await import('../lib/coach'); const p = await preguntaProfunda(useStore.getState()); setDr({ ...dr, preguntas: [{ p, r: '' }] }) }
@@ -169,7 +196,7 @@ function Writer({ initial, onClose }: { initial: Draft; onClose: () => void }) {
   const listo = texto.trim().length > 0
   const save = () => {
     const id = uid()
-    const e: JournalEntry = { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()).map((x) => `${x.p}\n${x.r.trim()}`).join('\n\n') : dr.texto.trim(), modo: dr.modo, preguntas: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()) : undefined, animo: dr.animo, emocion: dr.emo }
+    const e: JournalEntry = { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()).map((x) => `${x.p}\n${x.r.trim()}`).join('\n\n') : dr.texto.trim(), modo: dr.modo, preguntas: dr.preguntas.length ? dr.preguntas.filter((x) => x.r.trim()) : undefined, animo: dr.animo, emocion: dr.emo, valencia: dr.v, activacion: dr.a }
     d.set((s) => ({ journal: [...s.journal, e] }))
     try { localStorage.removeItem(BORRADOR) } catch { /* sin almacenamiento */ }
     if (hayRiesgo(e.texto)) { onClose(); ui.openSheet('ayuda'); return }
@@ -219,11 +246,11 @@ function Writer({ initial, onClose }: { initial: Draft; onClose: () => void }) {
         ) : (
           area(dr.texto, (v) => setDr({ ...dr, texto: v }), '¿Qué pasó hoy? ¿Qué sentiste? Escribí como si nadie fuera a leerlo.')
         )}
+        {largo && <div className="tema-rep"><Icon name="clock" size={16} /><span className="grow">Llevás más de 15 minutos. Escribir de más sobre lo que duele puede empeorar el ánimo: andá a la última pregunta y cerrá.</span>{dr.preguntas.length > 0 && <button className="chip" onClick={() => setStep(dr.preguntas.length - 1)}>Ir al cierre</button>}</div>}
         {!eligiendo && (
           <div className="w-close">
-            <div className="field"><label htmlFor="w-an">¿Cómo te sentís? · <span className="num">{dr.animo ?? '—'}</span> de 10</label>
-              <div className="slider"><input id="w-an" type="range" min={1} max={10} value={dr.animo ?? 5} style={{ ['--v' as string]: `${(((dr.animo ?? 5) - 1) / 9) * 100}%` }} onChange={(e) => setDr({ ...dr, animo: Number(e.target.value) })} /></div></div>
-            <div className="chips" style={{ flexWrap: 'wrap' }}>{EMOCIONES.map((e) => <button key={e} className="chip" aria-pressed={dr.emo === e} onClick={() => setDr({ ...dr, emo: dr.emo === e ? undefined : e })}>{e}</button>)}</div>
+            <div className="field"><label>¿Cómo te sentís?</label>
+              <MoodMeter v={dr.v} a={dr.a} palabra={dr.emo} onChange={(x) => setDr({ ...dr, v: x.v, a: x.a, emo: x.palabra, animo: animoDe(x.v) })} /></div>
             <button className="btn btn-primary btn-block" disabled={!listo} onClick={save}>Guardar entrada</button>
           </div>
         )}
@@ -245,7 +272,11 @@ function Reader({ j, onClose }: { j: JournalEntry; onClose: () => void }) {
       </header>
       <article className="w-body">
         {j.preguntas?.length ? j.preguntas.map((q, i) => <div key={i} className="r-block"><h3 className="w-title sm">{q.p}</h3><p className="r-txt">{q.r}</p></div>) : <p className="r-txt">{j.texto}</p>}
-        {(j.emocion || j.animo) && <p className="cap" style={{ marginTop: 24 }}>{j.emocion ?? ''}{j.emocion && j.animo ? ' · ' : ''}{j.animo ? `ánimo ${j.animo}/10` : ''}</p>}
+        {(j.emocion || j.animo) && <p className="cap" style={{ marginTop: 24 }}>{j.emocion ?? ''}{j.emocion && j.animo ? ' · ' : ''}{j.animo ? `ánimo ${j.animo}/10` : ''}{j.antes ? ` · enojo ${j.antes} → ${j.despues}` : ''}</p>}
+        <div className="r-flags">
+          <label className="check-row cap"><input type="checkbox" checked={!!j.privada} onChange={(e) => d.set((s) => ({ journal: s.journal.map((x) => (x.id === j.id ? { ...x, privada: e.target.checked } : x)) }))} />No compartir con el coach</label>
+          <label className="check-row cap"><input type="checkbox" checked={!!j.sinRecuerdo} onChange={(e) => d.set((s) => ({ journal: s.journal.map((x) => (x.id === j.id ? { ...x, sinRecuerdo: e.target.checked } : x)) }))} />No mostrarla en "Recuerdos"</label>
+        </div>
       </article>
     </div>
   )
@@ -300,5 +331,131 @@ function Apoyo() {
         </ul>
       </Card>
     </div>
+  )
+}
+
+/** Año en píxeles: un cuadrado por día, coloreado por el ánimo (check-ins y diario). */
+function Pixeles() {
+  const d = useStore()
+  const t = today()
+  const semanas = 26
+  const inicio = addDays(weekStart(t), -7 * (semanas - 1))
+  const animoDia = (f: string) => {
+    const c = d.checkins[f]
+    const j = d.journal.filter((x) => x.fecha === f && x.animo).at(-1)
+    return c?.animoNoche ?? j?.animo ?? c?.animoManana
+  }
+  const color = (a?: number) => (a === undefined ? undefined : a >= 8 ? '#5FBF92' : a >= 6 ? '#A9C77A' : a >= 5 ? '#E0C252' : a >= 3 ? '#E0A852' : '#E5766F')
+  const cols = Array.from({ length: semanas }, (_, w) => Array.from({ length: 7 }, (_, k) => addDays(inicio, w * 7 + k)))
+  const conDato = cols.flat().filter((f) => animoDia(f) !== undefined).length
+  return (
+    <Card title="Seis meses en píxeles" icon="grid">
+      <div className="pixeles" role="img" aria-label={`Ánimo de los últimos 6 meses, ${conDato} días con dato`}>
+        {cols.map((c, i) => <div key={i} className="px-col">{c.map((f) => <i key={f} className={f > t ? 'fut' : f === t ? 'hoy' : ''} style={{ background: color(animoDia(f)) }} title={`${f}: ${animoDia(f) ?? 'sin dato'}`} />)}</div>)}
+      </div>
+      <div className="px-leyenda cap"><span><i style={{ background: '#E5766F' }} />bajo</span><span><i style={{ background: '#E0C252' }} />medio</span><span><i style={{ background: '#5FBF92' }} />alto</span><span className="grow" />{conDato} días con dato</div>
+    </Card>
+  )
+}
+
+const wa = (tel?: string, txt = '') => `https://wa.me/${(tel ?? '').replace(/\D/g, '')}${txt ? `?text=${encodeURIComponent(txt)}` : ''}`
+const diasHastaCumple = (mmdd: string) => {
+  const t = today()
+  let f = `${t.slice(0, 4)}-${mmdd}`
+  if (f < t) f = `${Number(t.slice(0, 4)) + 1}-${mmdd}`
+  return diffDays(f, t)
+}
+
+/** Personas que importan: cada cuánto querés hablarle, hace cuánto que no, cumpleaños y horas juntos. Sin puntajes. */
+function Personas({ onAnotar }: { onAnotar: (con: string) => void }) {
+  const d = useStore()
+  const [nueva, setNueva] = useState<Omit<Persona, 'id'> | null>(null)
+  const ps = d.personas ?? []
+  const ult = (n: string) => d.social.filter((s) => s.con.toLowerCase() === n.toLowerCase()).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]
+  const horas = (n: string) => d.social.filter((s) => s.con.toLowerCase() === n.toLowerCase()).reduce((a, s) => a + (s.minutos ?? (s.tipo === 'juntada' ? 120 : s.tipo === 'llamada' ? 15 : 0)), 0) / 60
+  const lista = ps.map((p) => { const u = ult(p.nombre); const dias = u ? diffDays(today(), u.fecha) : null; return { p, u, dias, ratio: dias === null ? 2 : dias / p.cadencia } }).sort((a, b) => b.ratio - a.ratio)
+  const sugeridas = [...new Set(d.social.map((s) => s.con))].filter((n) => n && !ps.some((p) => p.nombre.toLowerCase() === n.toLowerCase()) && !/grupo/i.test(n)).slice(0, 4)
+  const cumples = ps.filter((p) => p.cumple && diasHastaCumple(p.cumple) <= 14).sort((a, b) => diasHastaCumple(a.cumple!) - diasHastaCumple(b.cumple!))
+  const guardar = () => { if (!nueva?.nombre.trim()) return; d.set((s) => ({ personas: [...(s.personas ?? []), { id: uid(), ...nueva, nombre: nueva.nombre.trim() }] })); setNueva(null) }
+  return (
+    <section className="panel pad">
+      <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2"><Icon name="users" size={16} />Personas que importan</h2><button className="btn btn-ghost btn-sm" onClick={() => setNueva(nueva ? null : { nombre: '', cadencia: 14 })}><Icon name={nueva ? 'x' : 'plus'} size={15} />{nueva ? 'Cancelar' : 'Agregar'}</button></div>
+      {cumples.map((p) => <div key={p.id} className="cumple"><Icon name="cake" size={15} /><span className="grow">{diasHastaCumple(p.cumple!) === 0 ? `Hoy cumple ${p.nombre}` : `${p.nombre} cumple en ${diasHastaCumple(p.cumple!)} día${diasHastaCumple(p.cumple!) === 1 ? '' : 's'}`}</span>{p.tel && <a className="chip" href={wa(p.tel, diasHastaCumple(p.cumple!) === 0 ? '¡Feliz cumple! ' : '')} target="_blank" rel="noreferrer">Escribirle</a>}</div>)}
+      {nueva && (
+        <div className="stack" style={{ gap: 10, marginBottom: 14 }}>
+          <div className="form-grid">
+            <Field label="Nombre" id="pe-n"><input id="pe-n" value={nueva.nombre} onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })} /></Field>
+            <Field label="Hablar cada" id="pe-c"><select id="pe-c" value={nueva.cadencia} onChange={(e) => setNueva({ ...nueva, cadencia: Number(e.target.value) })}><option value={3}>3 días</option><option value={7}>semana</option><option value={14}>2 semanas</option><option value={30}>mes</option><option value={90}>3 meses</option></select></Field>
+            <Field label="Cumpleaños" id="pe-b"><input id="pe-b" type="date" value={nueva.cumple ? `2000-${nueva.cumple}` : ''} onChange={(e) => setNueva({ ...nueva, cumple: e.target.value ? e.target.value.slice(5) : undefined })} /></Field>
+            <Field label="WhatsApp (con código de área)" id="pe-t"><input id="pe-t" inputMode="tel" value={nueva.tel ?? ''} placeholder="5493794…" onChange={(e) => setNueva({ ...nueva, tel: e.target.value || undefined })} /></Field>
+          </div>
+          <button className="btn btn-primary" disabled={!nueva.nombre.trim()} onClick={guardar}>Guardar</button>
+        </div>
+      )}
+      {lista.length === 0 && !nueva && <p className="cap">Sumá a las 5–10 personas con las que querés estar más cerca y cada cuánto te gustaría hablarles. La app te avisa con amabilidad cuando pasó un tiempo.</p>}
+      {lista.map(({ p, dias }) => {
+        const h = horas(p.nombre)
+        const prox = h < 50 ? 50 : h < 90 ? 90 : 200
+        return (
+          <div key={p.id} className={`persona ${dias !== null && dias > p.cadencia ? 'toca' : ''}`}>
+            <span className="grow"><b>{p.nombre}</b><small>{dias === null ? 'sin contacto registrado' : dias === 0 ? 'hablaron hoy' : `hace ${dias} día${dias === 1 ? '' : 's'}`} · cada {p.cadencia === 7 ? 'semana' : p.cadencia === 30 ? 'mes' : `${p.cadencia} días`}{h >= 1 ? ` · ${Math.round(h)} h juntos (la amistad cercana se arma con ~${prox} h)` : ''}</small></span>
+            {p.tel && <a className="icon-btn sm" aria-label={`Escribirle a ${p.nombre} por WhatsApp`} href={wa(p.tel)} target="_blank" rel="noreferrer"><Icon name="message-circle" size={16} /></a>}
+            <button className="btn btn-quiet btn-sm" onClick={() => onAnotar(p.nombre)}>Anotar</button>
+            <button className="icon-btn sm" aria-label={`Quitar a ${p.nombre}`} onClick={() => d.set((s) => ({ personas: s.personas.filter((x) => x.id !== p.id) }))}><Icon name="x" size={14} /></button>
+          </div>
+        )
+      })}
+      {sugeridas.length > 0 && <div className="chips" style={{ flexWrap: 'wrap', marginTop: 10 }}><span className="cap" style={{ alignSelf: 'center' }}>Sumar:</span>{sugeridas.map((n) => <button key={n} className="chip" onClick={() => d.set((s) => ({ personas: [...(s.personas ?? []), { id: uid(), nombre: n, cadencia: 14 }] }))}><Icon name="plus" size={12} />{n}</button>)}</div>}
+      <p className="cap" style={{ marginTop: 12 }}>La gente subestima cuánto valora el otro un mensaje corto. No hace falta un motivo.</p>
+    </section>
+  )
+}
+
+/** Gratitud una vez por semana, dirigida a una persona (más efectiva que a diario y que en abstracto). */
+function Gratitud() {
+  const d = useStore()
+  const ui = useUI()
+  const ws = weekStart(today())
+  const hecha = d.social.find((s) => s.fecha >= ws && s.charla === 'Gratitud')
+  const [con, setCon] = useState('')
+  const [txt, setTxt] = useState('')
+  const tel = (d.personas ?? []).find((p) => p.nombre.toLowerCase() === con.trim().toLowerCase())?.tel
+  const guardar = () => {
+    const id = uid()
+    d.set((s) => ({ social: [...s.social, { id, fecha: today(), tipo: 'mensaje', con: con.trim(), charla: 'Gratitud', nota: txt.trim() }] }))
+    ui.notify('Gratitud de la semana guardada', () => useStore.getState().set((s) => ({ social: s.social.filter((x) => x.id !== id) })))
+    setCon(''); setTxt('')
+  }
+  return (
+    <section className="panel pad">
+      <h2 className="h2"><Icon name="hand-heart" size={16} />Gratitud de la semana</h2>
+      {hecha ? <p className="body-2">Esta semana le agradeciste a <b>{hecha.con}</b>{hecha.nota ? `: “${hecha.nota}”` : ''}. La próxima, el lunes.</p> : <>
+        <p className="cap" style={{ margin: '-6px 0 12px' }}>Una vez por semana alcanza: hacerlo seguido le quita efecto. Mejor si se lo decís.</p>
+        <div className="stack" style={{ gap: 10 }}>
+          <input aria-label="A quién" placeholder="¿A quién le agradecés algo de esta semana?" value={con} onChange={(e) => setCon(e.target.value)} list="personas" />
+          <input aria-label="Por qué" placeholder="¿Por qué? (en una frase)" value={txt} onChange={(e) => setTxt(e.target.value)} />
+          <div className="row">
+            <button className="btn btn-primary" disabled={!con.trim() || !txt.trim()} onClick={guardar}>Guardar</button>
+            {con.trim() && txt.trim() && <a className="btn btn-quiet" href={wa(tel, `${txt.trim()}. Gracias.`)} target="_blank" rel="noreferrer" onClick={guardar}><Icon name="message-circle" size={15} />Mandárselo</a>}
+          </div>
+        </div>
+      </>}
+    </section>
+  )
+}
+
+/** Si el diario dice "no me invitan" o "sobro", una tarjeta que discute esa creencia con evidencia. */
+function Creencia() {
+  const d = useStore()
+  const reciente = d.journal.filter((j) => diffDays(today(), j.fecha) <= 14).reverse()
+  const re = /no me invita(n|ron)|sobro|no les importo|nadie me (escribe|llama|busca)|me dejaron afuera|no encajo/i
+  const j = reciente.find((x) => re.test(x.texto))
+  if (!j) return null
+  const frase = j.texto.match(re)?.[0]
+  return (
+    <section className="note-box creencia">
+      <Icon name="lightbulb" size={16} />
+      <span>Hace poco escribiste <b>«{frase}»</b>. Es un pensamiento muy común y casi siempre exagera: en 13 experimentos, la gente subestimó cuánto valoraba el otro un mensaje corto, incluso de alguien con quien hablaba poco. Probá hoy escribir primero, sin motivo. Lo peor que pasa es nada.</span>
+    </section>
   )
 }

@@ -521,7 +521,7 @@ export const recuerdos = (d: Data): Note[] => {
   const hace = [7, 30, 90, 180, 365]
   for (const n of hace) {
     const f = addDays(t, -n)
-    const j = d.journal.find((x) => x.fecha === f)
+    const j = d.journal.find((x) => x.fecha === f && !x.sinRecuerdo)
     const v = d.checkins[f]?.victoria
     const lbl = n === 7 ? 'Hace una semana' : n === 30 ? 'Hace un mes' : n === 365 ? 'Hace un año' : `Hace ${n} días`
     if (v) out.push({ icon: 'trophy', text: `${lbl}: "${v}"` })

@@ -108,9 +108,21 @@ export type Activo = 'cedear' | 'accion' | 'cripto' | 'fci' | 'plazo fijo' | 'do
 export interface Posicion { id: string; activo: string; tipo: Activo; cantidad: number; valorUSD: number; actualizado: string }
 export interface Aporte { id: string; fecha: string; usd: number; nota?: string; retiro?: boolean }
 
-export interface SocialLog { id: string; fecha: string; tipo: 'juntada' | 'mensaje' | 'llamada' | 'plan propuesto'; con: string; nota?: string }
-export type ModoDiario = 'libre' | 'guiado' | 'profundo'
-export interface JournalEntry { id: string; fecha: string; texto: string; emocion?: string; modo?: ModoDiario; preguntas?: { p: string; r: string }[]; animo?: number; hora?: string }
+export interface SocialLog { id: string; fecha: string; tipo: 'juntada' | 'mensaje' | 'llamada' | 'plan propuesto'; con: string; nota?: string; charla?: string; minutos?: number }
+/** Persona que importa: cada cuánto querés hablarle, cumpleaños y teléfono para un mensaje de un toque. */
+export interface Persona { id: string; nombre: string; cadencia: number; cumple?: string; tel?: string; nota?: string }
+/** Lo que el coach sabe de vos: visible, editable y borrable. */
+export interface Memoria { id: string; texto: string; fecha: string; origen: 'coach' | 'vos' }
+export type ModoDiario = 'libre' | 'guiado' | 'profundo' | 'enojo'
+export interface JournalEntry {
+  id: string; fecha: string; texto: string; emocion?: string; modo?: ModoDiario; preguntas?: { p: string; r: string }[]; animo?: number; hora?: string
+  /** medidor de ánimo de 2 ejes: agrado y energía, de −5 a 5 */
+  valencia?: number; activacion?: number
+  /** no la lee el coach / no aparece en recuerdos */
+  privada?: boolean; sinRecuerdo?: boolean
+  /** módulo de enojo: intensidad antes y después (1–10) */
+  antes?: number; despues?: number
+}
 export interface Idea { id: string; fecha: string; titulo: string; nota?: string; estado: 'cruda' | 'investigando' | 'validando' | 'descartada' }
 
 export interface Penalty { id: string; fecha: string; motivo: string; tarea: string; hecho: boolean; creado?: string; vence?: string; cumplidoEl?: string; evidencia?: string; sancionado?: boolean; clave?: string; reparadoEl?: string; reparacion?: string }
