@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
-import { dow, today, uid } from '../lib/date'
-import { duracionBloque, excusaDe, habitsFor, hourFmt, nowMin, tituloBloque, toMin } from '../lib/logic'
+import { addDays, dow, today, uid } from '../lib/date'
+import { agendaDe, duracionBloque, excusaDe, habitsFor, hourFmt, nowMin, tituloBloque, toMin } from '../lib/logic'
 import { conHora, eventosDelDia, flexiblesDe, obligatoriasDe, TIPOS_SUCESO, vencidas, type Obligatoria } from '../lib/dia'
 import { ahoraHHMM } from '../lib/ayuno'
 import { hayRiesgo } from '../lib/seguridad'
@@ -46,6 +46,7 @@ export function ElDia() {
   return (
     <div className="dia-grid">
       {noche && <button className="ci-btn dia-cierre" onClick={() => ui.openSheet('cierre')}><Icon name="sunset" size={20} /><span><b>Cerrar el día</b><small>30 s · lo pendiente pasa a mañana y anotás la difícil</small></span></button>}
+      {new Date().getHours() >= 19 && <Manana />}
       <section className="panel ob-panel" aria-label="Obligatorias de hoy">
         <div className="ob-head">
           <Ring p={obs.length ? listas / obs.length : 0} size={40} sw={4} />
@@ -61,6 +62,21 @@ export function ElDia() {
       <LoQuePasa />
       <CuandoPuedas />
     </div>
+  )
+}
+
+/** De noche, un vistazo a mañana: ayuda a soltar el día sabiendo qué viene. */
+function Manana() {
+  const d = useStore()
+  const m = addDays(today(), 1)
+  const ag = agendaDe(d, m)
+  const desp = d.checkins[m]?.horaDespertar ?? d.profile.despertar[dow(m)]
+  return (
+    <section className="manana" aria-label="Mañana">
+      <span className="eyebrow">Mañana · te levantás {desp}</span>
+      {ag.length ? <span className="manana-l">{ag.map((a) => <span key={a.que}><b className="mono">{a.hora || '—'}</b> {tituloBloque(a.que)}</span>)}</span>
+        : <span className="cap">Nada obligatorio: día libre.</span>}
+    </section>
   )
 }
 

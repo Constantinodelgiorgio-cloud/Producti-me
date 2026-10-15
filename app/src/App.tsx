@@ -11,7 +11,7 @@ import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
 import { CierreSheet } from './components/Tareas'
 import { syncCorreo } from './lib/correo'
-import { iniciarSync, sincronizar } from './lib/sync'
+import { iniciarSync, sincronizar, useSync } from './lib/sync'
 import { iniciarSalud } from './lib/salud'
 import Hoy from './pages/Hoy'
 import Habitos from './pages/Habitos'
@@ -228,6 +228,11 @@ function Palette() {
     ['pen-line', 'Anotar lo que pasó', () => verDia('.pasa-in input')],
     ['plus', 'Agregar una obligatoria de hoy', () => { verDia(); setTimeout(() => (document.querySelector('.ob-add-btn') as HTMLElement | null)?.click(), 350) }],
     ['sparkles', 'Hablar con el coach', () => ui.go('coach')],
+    ['refresh', 'Sincronizar ahora', async () => {
+      if (!useStore.getState().settings.syncOn) { ui.go('ajustes'); ui.notify('La sincronización está apagada: activala en Conexión con Google', undefined, 'neutral'); return }
+      await sincronizar(); const e = useSync.getState()
+      ui.notify(e.estado === 'ok' ? 'Sincronizado' : e.estado === 'sin conexion' ? 'Sin conexión: se sincroniza cuando vuelva' : `No se pudo sincronizar: ${e.error ?? ''}`, undefined, e.estado === 'ok' ? 'ok' : 'neutral')
+    }],
     ['utensils', 'Registrar comida', () => ui.go('comida')], ['plus', 'Registrar…', () => ui.openSheet('registrar')],
     ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')], ['sunset', 'Cerrar el día', () => ui.openSheet('cierre')],
     ['dumbbell', 'Registrar entrenamiento', () => ui.go('fisico', 'entreno')], ['receipt', 'Registrar gasto o ingreso', () => ui.go('finanzas', 'movimientos')],

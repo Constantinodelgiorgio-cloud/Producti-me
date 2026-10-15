@@ -1125,3 +1125,7 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 .ob-base .icon-btn { flex: none; }
 .sheet:focus { outline: none; }
 .offline-pill { width: fit-content; margin: calc(env(safe-area-inset-top, 0px) + 10px) auto -4px; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; font-size: 12px; color: var(--t2); background: color-mix(in srgb, var(--surface-2) 92%, transparent); box-shadow: inset 0 0 0 1px var(--line-2), 0 8px 20px -10px rgba(0,0,0,.8); backdrop-filter: blur(10px); white-space: nowrap; pointer-events: none; }
+.manana { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--r-2); box-shadow: inset 0 0 0 1px var(--line); }
+.manana-l { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--t2); }
+.manana-l b { font-weight: 500; font-size: 12px; color: var(--t1); }
+@container app (min-width: 980px) { .dia-grid .manana { grid-column: 1 / -1; } }
