@@ -111,7 +111,8 @@ const llamar = async <T,>(c: { url: string; token: string }, body?: Record<strin
   }
   if (!r.ok) throw new Error(`El script respondió ${r.status}.`)
   const j = await r.json() as T & { error?: string }
-  if (j.error === 'unauthorized') throw new Error('La clave del script no coincide.')
+  if (j.error === 'clave_sin_cambiar') throw new Error('En el script de Google todavía está la clave de ejemplo: cambiala en la línea CLAVE y publicá una versión nueva.')
+  if (j.error === 'unauthorized') throw new Error('La clave del script no coincide con la de Ajustes (o falta publicar una versión nueva del script).')
   if (j.error === 'accion') throw new Error('El script es una versión vieja: actualizalo con integraciones/producti-me.gs.')
   return j
 }

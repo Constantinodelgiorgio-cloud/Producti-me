@@ -72,7 +72,7 @@ export const syncCorreo = async (): Promise<{ nuevos: number; pendientes: number
     if (st.correo.ultima) url.searchParams.set('desde', String(new Date(st.correo.ultima).getTime() - 3 * 86400e3))
     const r = await fetch(url.toString(), { redirect: 'follow' })
     const j = await r.json() as { mensajes?: Correo[]; error?: string }
-    if (j.error || !j.mensajes) throw new Error(j.error === 'unauthorized' ? 'La clave del script no coincide.' : j.error ?? 'Respuesta inválida del script.')
+    if (j.error || !j.mensajes) throw new Error(j.error === 'clave_sin_cambiar' ? 'En el script de Google todavía está la clave de ejemplo: cambiala en la línea CLAVE y publicá una versión nueva.' : j.error === 'unauthorized' ? 'La clave del script no coincide con la de Ajustes (o falta publicar una versión nueva del script).' : j.error ?? 'Respuesta inválida del script.')
     const vistos = new Set(st.correo.vistos)
     const ya = new Set([...st.money.map((m) => m.ref), ...st.pendientes.map((p) => p.ref)].filter(Boolean))
     const nuevos = j.mensajes.filter((m) => !vistos.has(m.id) && !ya.has(m.id))

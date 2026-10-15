@@ -14,17 +14,24 @@
  * Instalación: docs/14-sincronizacion.md · correo: docs/12 · Salud y widget: docs/15.
  */
 
-// 1) Cambiá esta clave por un texto largo y difícil de adivinar (y pegá el mismo en Producti-me → Ajustes).
-const CLAVE = 'CAMBIAR-por-una-clave-larga-y-secreta';
+// =====================================================================================
+// 1) CAMBIÁ LA CLAVE ACÁ ABAJO: reemplazá solo el texto entre las comillas simples.
+//    Usá letras y números, sin espacios ni comillas (ej. 'Constantino-Rugby-2026-xK9p').
+//    Pegá exactamente la misma clave en Producti-me → Ajustes → Conexión con Google.
+//    Después de cambiarla: Implementar → Gestionar implementaciones → lápiz → Versión: Nueva → Implementar.
+// =====================================================================================
+var CLAVE = 'CAMBIAR-por-una-clave-larga-y-secreta';
+var CLAVE_EJEMPLO = 'CAMBIAR-por-una-clave-larga-y-secreta';
 
 // 2) Remitentes y palabras que se buscan. Ajustalo si tu banco usa otra dirección.
-const BUSQUEDA = '(from:mercadopago.com OR from:santander.com.ar OR from:visa.com.ar OR from:prismamediosdepago.com '
+var BUSQUEDA = '(from:mercadopago.com OR from:santander.com.ar OR from:visa.com.ar OR from:prismamediosdepago.com '
   + 'OR subject:(pagaste OR compraste OR consumo OR transferencia OR "recibiste dinero" OR "pago aprobado")) newer_than:30d';
 
-const ARCHIVO = 'producti-me-datos.json';
+var ARCHIVO = 'producti-me-datos.json';
 
 function doGet(e) {
-  const p = (e && e.parameter) || {};
+  var p = (e && e.parameter) || {};
+  if (CLAVE === CLAVE_EJEMPLO) return json({ error: 'clave_sin_cambiar' });
   if (p.token !== CLAVE) return json({ error: 'unauthorized' });
   if (p.accion === 'rev') return json(cabecera());
   if (p.accion === 'leer') return json(leer());
@@ -36,8 +43,9 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  let b;
+  var b;
   try { b = JSON.parse(e.postData.contents); } catch (x) { return json({ error: 'bad_request' }); }
+  if (CLAVE === CLAVE_EJEMPLO) return json({ error: 'clave_sin_cambiar' });
   if (b.token !== CLAVE) return json({ error: 'unauthorized' });
   if (b.accion === 'anotar') return json(anotarSalud(b));
   if (b.accion === 'resumen') {
@@ -45,15 +53,15 @@ function doPost(e) {
     return json({ ok: true });
   }
   if (b.accion !== 'guardar') return json({ error: 'accion' });
-  const lock = LockService.getScriptLock();
+  var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const props = PropertiesService.getScriptProperties();
-    const rev = Number(props.getProperty('rev') || 0);
+    var props = PropertiesService.getScriptProperties();
+    var rev = Number(props.getProperty('rev') || 0);
     // Si otro dispositivo guardó en el medio, la app vuelve a combinar y reintenta.
     if (Number(b.rev) !== rev) return json({ error: 'conflict', rev: rev });
-    const nueva = rev + 1;
-    const modificado = new Date().toISOString();
+    var nueva = rev + 1;
+    var modificado = new Date().toISOString();
     archivo().setContent(JSON.stringify({ rev: nueva, modificado: modificado, dispositivo: b.dispositivo || '', data: b.data }));
     props.setProperties({ rev: String(nueva), modificado: modificado, dispositivo: b.dispositivo || '' });
     return json({ ok: true, rev: nueva });
@@ -63,7 +71,7 @@ function doPost(e) {
 }
 
 function cabecera() {
-  const p = PropertiesService.getScriptProperties().getProperties();
+  var p = PropertiesService.getScriptProperties().getProperties();
   return { rev: Number(p.rev || 0), modificado: p.modificado || null, dispositivo: p.dispositivo || null };
 }
 
@@ -73,17 +81,17 @@ function leer() {
 }
 
 function archivo() {
-  const props = PropertiesService.getScriptProperties();
-  const id = props.getProperty('archivo');
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('archivo');
   if (id) { try { return DriveApp.getFileById(id); } catch (x) { /* se borró: se crea otro */ } }
-  const f = DriveApp.createFile(ARCHIVO, '{}', MimeType.PLAIN_TEXT);
+  var f = DriveApp.createFile(ARCHIVO, '{}', MimeType.PLAIN_TEXT);
   props.setProperty('archivo', f.getId());
   return f;
 }
 
 function correos(desde) {
-  const hilos = GmailApp.search(BUSQUEDA, 0, 60);
-  const mensajes = [];
+  var hilos = GmailApp.search(BUSQUEDA, 0, 60);
+  var mensajes = [];
   hilos.forEach(function (h) {
     h.getMessages().forEach(function (m) {
       if (m.getDate().getTime() <= desde) return;
@@ -172,8 +180,11 @@ function json(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Para probar desde el editor: ejecutá esta función, aceptá los permisos y mirá el registro.
+// Para probar desde el editor: elegí "probar" en el menú de funciones (arriba), tocá Ejecutar,
+// aceptá los permisos y mirá el registro. No ejecutes doGet ni doPost desde el editor: los llama la app.
 function probar() {
-  Logger.log(JSON.stringify(cabecera()));
-  Logger.log(JSON.stringify(correos(0).slice(0, 3), null, 2));
+  Logger.log(CLAVE === CLAVE_EJEMPLO ? 'FALTA: cambiá la CLAVE (línea de arriba de todo).' : 'Clave cambiada: OK (' + CLAVE.length + ' caracteres).');
+  try { Logger.log('Drive: OK · datos guardados (rev ' + cabecera().rev + ') en ' + archivo().getName()); } catch (x) { Logger.log('Drive: ERROR · ' + x); }
+  try { Logger.log('Gmail: OK · ' + correos(0).length + ' correos de pagos en 30 días'); } catch (x) { Logger.log('Gmail: ERROR · ' + x); }
+  Logger.log('Si todo dice OK: Implementar → Nueva implementación (o Gestionar → Versión nueva) → Aplicación web, ejecutar como "Yo", acceso "Cualquier usuario".');
 }
