@@ -1112,3 +1112,7 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 
 .chart-empty { display: grid; place-items: center; border-radius: var(--r-2); border: 1px dashed var(--line-2); color: var(--t3); font-size: 12.5px; margin: 4px 0; }
 .sec-wrap { flex-wrap: wrap; row-gap: 8px; }
+.despues { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 10px; font-size: 13px; color: var(--t2); text-align: left; }
+.despues b { font-weight: 500; color: var(--t1); font-size: 12px; }
+.despues .ic { color: var(--t3); }
+.despues:hover span:not(.cap) { color: var(--t1); }

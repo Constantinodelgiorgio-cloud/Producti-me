@@ -73,17 +73,22 @@ function ObRow({ o }: { o: Obligatoria }) {
   const cur = !!a.hora && !o.estado && toMin(a.hora) <= now && now < toMin(a.hora) + 60
   const hs = repartir(d, f).get(a.que) ?? []
   const marcar = (v?: 'hecho' | 'no') => {
-    const prev = o.estado as 'hecho' | 'no' | undefined
-    const write = (x?: 'hecho' | 'no') => d.set((s) => {
+    const antes = useStore.getState()
+    // Al cumplir un bloque, los hábitos que van adentro (entrenar en el gimnasio) quedan hechos también.
+    const arrastra = v === 'hecho' ? hs.filter((h) => !antes.habitLog[f]?.[h.id]) : []
+    d.set((s) => {
       const p = s.planDia[f] ?? {}
       const hechos = { ...(p.hechos ?? {}) }
-      if (x) hechos[a.que] = x
+      if (v) hechos[a.que] = v
       else delete hechos[a.que]
-      const pd = conHora(s, f, `ob:${a.que}`, x === 'hecho')
-      return { planDia: { ...pd, [f]: { ...pd[f], hechos } } }
+      let pd = conHora(s, f, `ob:${a.que}`, v === 'hecho')
+      for (const h of arrastra) pd = conHora({ ...s, planDia: pd }, f, h.id, true)
+      const log = { ...(s.habitLog[f] ?? {}) }
+      for (const h of arrastra) log[h.id] = 'hecho'
+      return { planDia: { ...pd, [f]: { ...pd[f], hechos } }, ...(arrastra.length ? { habitLog: { ...s.habitLog, [f]: log } } : {}) }
     })
-    write(v)
-    if (v) ui.notify(v === 'hecho' ? `Hecho: ${a.que}` : `${a.que}: hoy no se hizo`, () => write(prev), v === 'hecho' ? 'ok' : 'neutral')
+    const deshacer = () => useStore.getState().set(() => ({ planDia: antes.planDia, habitLog: antes.habitLog }))
+    if (v) ui.notify(v === 'hecho' ? `Hecho: ${tituloBloque(a.que)}${arrastra.length ? ` · también ${arrastra.map((h) => h.nombre).join(', ')}` : ''}` : `${tituloBloque(a.que)}: hoy no se hizo`, deshacer, v === 'hecho' ? 'ok' : 'neutral')
   }
   const cambiarHora = (h: string) => {
     d.set((s) => ({ planDia: editarHoy(s, f, (ag) => ag.map((x) => (x.que === a.que ? { ...x, hora: h } : x))) }))

@@ -3,7 +3,7 @@ import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, dow, parse, today, weekStart } from '../lib/date'
 import {
-  agendaAhora, avisos, bedtimeFor, dayNutrition, excusaDe, habitScore, habitsFor, hourFmt, last, levelInfo, MOMENTOS,
+  agendaAhora, agendaDe, avisos, bedtimeFor, dayNutrition, estadoObligatoria, excusaDe, habitScore, habitsFor, hourFmt, last, levelInfo, MOMENTOS,
   momentoDe, nowMin, recomendaciones, tituloBloque, toMin, recuerdos, sancionActiva, sleepHours, totalXp, weekMedals,
 } from '../lib/logic'
 import type { Habit } from '../lib/types'
@@ -83,6 +83,10 @@ function Ahora() {
   const madrugada = nowMin() < toMin(ci?.horaDespertar ?? d.profile.despertar[dow(f)]) && new Date().getHours() < 6
   const ahora = madrugada ? null : agendaAhora(d)
   const proximo = madrugada ? agendaAhora(d) : null
+  // Lo que sigue: las próximas obligatorias con hora y cuántas quedan sin hora.
+  const pendientesOb = agendaDe(d, f).filter((a) => !estadoObligatoria(d, f, a.que) && a.que !== ahora?.que)
+  const despues = pendientesOb.filter((a) => a.hora && toMin(a.hora) > nowMin()).slice(0, 2)
+  const sinHoraOb = pendientesOb.filter((a) => !a.hora).length
   const wakeTomorrow = d.profile.despertar[dow(addDays(f, 1))]
   const bed = bedtimeFor(wakeTomorrow, d.profile.suenoMin)
   const wm = weekMedals(d, weekStart(f))
@@ -120,6 +124,9 @@ function Ahora() {
                 <div className="cap mono">{ahora ? `${ahora.hora}–${hourFmt(ahora.fin)}` : madrugada ? `te levantás a las ${ci?.horaDespertar ?? d.profile.despertar[dow(f)]}` : `antes de las ${bed}`}{ahora?.intensidad && <span className={`int ${ahora.intensidad}`} style={{ marginLeft: 8 }}>{ahora.intensidad}</span>}{d.planDia[f]?.agenda && <span className="chip-mini">plan cambiado</span>}</div>
                 <div className="now-title xl">{ahora ? tituloBloque(ahora.que) : madrugada ? 'Es hora de dormir' : 'Acostarte para dormir ' + dec(d.profile.suenoMin) + ' h'}</div>
                 {proximo && <div className="cap" style={{ marginTop: 6 }}>Lo primero: {tituloBloque(proximo.que)} a las {proximo.hora}</div>}
+                {!madrugada && (despues.length > 0 || sinHoraOb > 0) && <button className="despues" onClick={() => d.set((s) => ({ settings: { ...s.settings, hoyView: 'dia' } }))}>
+                  <span className="cap">Después</span>{despues.map((a) => <span key={a.que}><b className="mono">{a.hora}</b> {tituloBloque(a.que)}</span>)}{sinHoraOb > 0 && <span>+{sinHoraOb} sin hora</span>}<Icon name="chevron-right" size={14} />
+                </button>}
               </div>
               {ahora && /revisi/i.test(ahora.que) && <button className="btn btn-quiet btn-sm" onClick={() => ui.go('revision')}>Preparar<Icon name="arrow-right" size={15} /></button>}
             </div>
