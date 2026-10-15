@@ -62,7 +62,7 @@ export default function Revision() {
             {aprend.map((a) => <div className="list-row" key={a.id}><span className="grow">{d.habits.find((h) => h.id === a.habitId)?.nombre ?? 'Hábito'}<small className="cap" style={{ display: 'block' }}>{a.que}{a.distinto ? ` → ${a.distinto}` : ''}</small></span><span className="cap">{fmtShort(a.fecha)}</span></div>)}
             <p className="cap" style={{ marginTop: 8 }}>Si algo se repite, es un problema de diseño del día, no de voluntad: ajustá el horario o la versión mínima.</p>
           </section>}
-          {(sucs.length > 0 || obsSem.length > 0) && <section className="panel pad">
+          {(sucs.length > 0 || obsHechas > 0) && <section className="panel pad">
             <h2 className="h2"><Icon name="history" size={16} />Lo que fue pasando</h2>
             <div className="kpis" style={{ marginTop: 4 }}>
               <div className="kpi"><span className="cap">Obligatorias</span><span className="val-m">{obsHechas}/{obsSem.length}</span></div>

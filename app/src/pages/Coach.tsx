@@ -3,7 +3,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { dow, today, uid } from '../lib/date'
-import { agendaDe, habitsFor, excusaDe } from '../lib/logic'
+import { agendaDe, habitsFor, excusaDe, tituloBloque } from '../lib/logic'
 import { aplicarAcciones, describir, revertirCambio, validarAccion } from '../lib/actions'
 import { resolverPropuesta, runTurn, userMessage, type ToolHost } from '../lib/coach'
 import { ALIMENTOS, resolver } from '../lib/foods'
@@ -229,7 +229,7 @@ export default function Coach() {
 
       <button className="plan-state" onClick={() => ui.go('hoy')} aria-label="Ver el plan de hoy">
         <span className="ps-dot" data-on={!!d.planDia[f]} />
-        <span className="grow"><b>Tu día · {ag.length} bloques · {hs.length} hábitos</b><span className="cap">{ag.map((a) => `${a.hora} ${a.que.split('(')[0].trim()}`).join(' · ') || 'Sin agenda'}{exc ? ` · ${exc} excusado${exc > 1 ? 's' : ''}` : ''}</span></span>
+        <span className="grow"><b>Tu día · {ag.length} obligatoria{ag.length === 1 ? '' : 's'} · {hs.length} hábitos</b><span className="cap">{ag.map((a) => `${a.hora || 'sin hora'} ${tituloBloque(a.que)}`).join(' · ') || 'Nada obligatorio'}{exc ? ` · ${exc} excusado${exc > 1 ? 's' : ''}` : ''}</span></span>
         <Icon name="chevron-right" size={16} />
       </button>
 

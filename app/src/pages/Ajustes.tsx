@@ -3,7 +3,7 @@ import { get as idbGet } from 'idb-keyval'
 import { useStore, exportData, initialData, reiniciarDias, BACKUP_KEY, BACKUP_KEY_V2, type Data } from '../lib/store'
 import { codigoVinculo, combinarCopia, leerVinculo, sincronizar, useSync } from '../lib/sync'
 import { useUI } from '../lib/ui'
-import type { Profile } from '../lib/types'
+import type { AgendaItem, Profile } from '../lib/types'
 import { useScrollToSub } from '../components/useScrollTo'
 import { Icon } from '../components/Icon'
 import { Card, Field, PageHead, Seg } from '../components/ui'
@@ -101,6 +101,7 @@ export default function Ajustes() {
             {num('rendimientoObjetivo', 'Rendimiento objetivo (%)', 0.5)}
           </div>
         </Card>
+        <ObligatoriasBase />
         <Card title="Hora de despertar" icon="sun">
           <div className="form-grid">{['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map((l, i) => (
             <Field key={l} label={l} id={`w-${i}`}><input id={`w-${i}`} type="time" value={P.despertar[i]} onChange={(e) => up({ despertar: P.despertar.map((x, j) => (j === i ? e.target.value : x)) })} /></Field>
@@ -123,6 +124,41 @@ export default function Ajustes() {
         </Card>
       </div>
     </div>
+  )
+}
+
+const DIAS_AJ = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const DIAS_NOMBRE = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados', 'domingos']
+/** Lo que se repite cada semana (facultad, gimnasio, marmolería). Lo puntual se cambia desde Hoy → El día. */
+function ObligatoriasBase() {
+  const d = useStore()
+  const [dia, setDia] = useState(() => (new Date().getDay() + 6) % 7)
+  const [que, setQue] = useState('')
+  const [hora, setHora] = useState('')
+  const lista = d.profile.agenda[dia] ?? []
+  const editar = (fn: (ag: AgendaItem[]) => AgendaItem[]) => d.set((s) => ({ profile: { ...s.profile, agenda: s.profile.agenda.map((ag, i) => (i === dia ? fn([...ag]).sort((a, b) => (a.hora || '99').localeCompare(b.hora || '99')) : ag)) } }))
+  const add = () => { if (!que.trim()) return; editar((ag) => [...ag, { hora, que: que.trim() }]); setQue(''); setHora('') }
+  return (
+    <Card title="Obligatorias de cada semana" icon="calendar-clock">
+      <p className="body-2" style={{ marginBottom: 12 }}>Lo fijo de cada día. Para cambiar solo hoy, usá Hoy → El día.</p>
+      <div className="days" role="group" aria-label="Día de la semana" style={{ marginBottom: 12 }}>
+        {DIAS_AJ.map((l, i) => <button key={i} type="button" aria-pressed={dia === i} aria-label={DIAS_NOMBRE[i]} onClick={() => setDia(i)}>{l}</button>)}
+      </div>
+      {lista.length === 0 && <p className="cap" style={{ marginBottom: 8 }}>Nada fijo los {DIAS_NOMBRE[dia]}.</p>}
+      {lista.map((a, k) => (
+        <div className="ob-base" key={`${dia}-${k}`}>
+          <input type="time" aria-label={`Hora de ${a.que}`} value={a.hora} onChange={(e) => editar((ag) => ag.map((x) => (x === a ? { ...x, hora: e.target.value } : x)))} />
+          <input aria-label="Qué" value={a.que} onChange={(e) => editar((ag) => ag.map((x) => (x === a ? { ...x, que: e.target.value } : x)))} />
+          <button className="icon-btn sm" aria-label={`Sacar ${a.que}`} onClick={() => editar((ag) => ag.filter((x) => x !== a))}><Icon name="trash" size={15} /></button>
+        </div>
+      ))}
+      <form className="ob-base" onSubmit={(e) => { e.preventDefault(); add() }}>
+        <input type="time" aria-label="Hora (opcional)" value={hora} onChange={(e) => setHora(e.target.value)} />
+        <input aria-label="Nueva obligatoria" placeholder="Agregar…" value={que} onChange={(e) => setQue(e.target.value)} />
+        <button className="icon-btn sm" aria-label="Agregar" disabled={!que.trim()}><Icon name="plus" size={16} /></button>
+      </form>
+      <p className="cap" style={{ marginTop: 8 }}>Hora vacía = obligatoria sin horario fijo. "(hasta 11:40)" en el texto marca hasta cuándo dura.</p>
+    </Card>
   )
 }
 

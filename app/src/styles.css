@@ -1119,3 +1119,7 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 @container app (min-width: 980px) { .dia-grid .dia-cierre { grid-column: 1 / -1; } }
 .note-box.pista { align-items: flex-start; margin: 4px 0 6px; }
 .note-box.pista .icon-btn { margin: -6px -6px 0 0; flex: none; }
+.ob-base { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.ob-base input[type=time] { width: 118px !important; flex: none; min-height: 42px; padding: 4px 8px !important; font-size: 15px; }
+.ob-base input:not([type=time]) { flex: 1; min-width: 0; }
+.ob-base .icon-btn { flex: none; }
