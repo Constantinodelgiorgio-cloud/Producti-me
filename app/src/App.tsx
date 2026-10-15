@@ -4,6 +4,8 @@ import { castigosPendientes, levelInfo, processRules, sancionActiva, totalXp } f
 import { parseHash, ROUTE_INFO, SECTION, useUI, type Route } from './lib/ui'
 import { Icon } from './components/Icon'
 import { Bar } from './components/ui'
+import { today, uid } from './lib/date'
+import { hayRiesgo } from './lib/seguridad'
 import { AyudaSheet, CheckinSheet, ConfirmSheet, MasSheet, RegistrarSheet } from './components/Sheets'
 import { CastigoSheet } from './components/Castigos'
 import { HabitSheet } from './components/HabitTile'
@@ -126,6 +128,8 @@ function Shell() {
 
   const tabIdx = TABS.indexOf(activeTab)
   const [name, icon] = ROUTE_INFO[route]
+  // Título de la pestaña o ventana según la pantalla (y en el selector de apps del sistema).
+  useEffect(() => { document.title = route === 'hoy' ? 'Producti-me' : `${name} · Producti-me` }, [route, name])
 
   return (
     <div className="shell" data-section={SECTION[route]}>
@@ -195,7 +199,21 @@ function Palette() {
   const ui = useUI()
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
+  const verDia = (foco?: string) => {
+    useStore.getState().set((s) => ({ settings: { ...s.settings, hoyView: 'dia' } }))
+    ui.go('hoy')
+    if (foco) setTimeout(() => (document.querySelector(foco) as HTMLElement | null)?.focus(), 350)
+  }
+  const anotar = (texto: string) => {
+    const id = uid()
+    useStore.getState().set((s) => ({ sucesos: [...(s.sucesos ?? []), { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto, tipo: 'nota' }] }))
+    if (hayRiesgo(texto)) { ui.openSheet('ayuda'); return }
+    ui.notify('Anotado en "Lo que va pasando"', () => useStore.getState().set((s) => ({ sucesos: s.sucesos.filter((x) => x.id !== id) })))
+  }
   const cmds: [string, string, () => void][] = [
+    ['list-checks', 'Ver el día: obligatorias y lo que pasó', () => verDia()],
+    ['pen-line', 'Anotar lo que pasó', () => verDia('.pasa-in input')],
+    ['plus', 'Agregar una obligatoria de hoy', () => { verDia(); setTimeout(() => (document.querySelector('.ob-add-btn') as HTMLElement | null)?.click(), 350) }],
     ['sparkles', 'Hablar con el coach', () => ui.go('coach')],
     ['utensils', 'Registrar comida', () => ui.go('comida')], ['plus', 'Registrar…', () => ui.openSheet('registrar')],
     ['sun', 'Check-in de la mañana', () => ui.openSheet('checkin-manana')], ['moon', 'Check-in de la noche', () => ui.openSheet('checkin-noche')], ['sunset', 'Cerrar el día', () => ui.openSheet('cierre')],
@@ -206,7 +224,10 @@ function Palette() {
     ['areas', 'Ir a Áreas', () => ui.go('areas')], ['phone', 'Ayuda ahora (líneas gratuitas)', () => ui.openSheet('ayuda')],
     ['calendar-check', 'Abrir la revisión semanal', () => ui.go('revision')], ['settings', 'Abrir ajustes', () => ui.go('ajustes')],
   ]
-  const list = cmds.filter((c) => c[1].toLowerCase().includes(q.toLowerCase()))
+  // Búsqueda sin tildes ("dia" encuentra "día"); si nada coincide, lo escrito se puede anotar en el día.
+  const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const hallados = cmds.filter((c) => norm(c[1]).includes(norm(q.trim())))
+  const list: typeof cmds = q.trim().length > 2 && (!hallados.length || /\s/.test(q.trim())) ? [...hallados, ['pen-line', `Anotar en el día: «${q.trim()}»`, () => anotar(q.trim())]] : hallados
   const run = (c?: (typeof cmds)[number]) => { if (!c) return; ui.setPalette(false); c[2]() }
   return (
     <>
