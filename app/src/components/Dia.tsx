@@ -51,7 +51,7 @@ export function ElDia() {
           <Ring p={obs.length ? listas / obs.length : 0} size={40} sw={4} />
           <div className="grow"><span className="eyebrow">Obligatorias de hoy</span><div className="ob-count"><b className="num">{listas}</b> de {obs.length}</div></div>
         </div>
-        {tardes.length > 0 && <p className="cap ob-aviso"><Icon name="clock" size={13} />{tardes.length === 1 ? `«${tardes[0].clave}» ya pasó su hora.` : `${tardes.length} ya pasaron su hora.`} Marcala, cambiale la hora o sacala de hoy: el día cambió, no pasa nada.</p>}
+        {tardes.length > 0 && <p className="cap ob-aviso"><Icon name="clock" size={13} />{tardes.length === 1 ? `«${tituloBloque(tardes[0].clave)}» ya terminó y no está marcada.` : `${tardes.length} ya terminaron y no están marcadas.`} Marcala, cambiale la hora o sacala de hoy: el día cambió, no pasa nada.</p>}
         <div className="ob-list">
           {obs.length === 0 && <p className="cap" style={{ padding: '6px 2px 10px' }}>Nada obligatorio hoy. Agregá lo que sí o sí tiene que pasar (con hora si la tiene).</p>}
           {obs.map((o) => o.item ? <ObRow key={o.clave} o={o} /> : <div key={o.clave} className="ob-hab"><HabitRow h={o.habito!} fecha={f} /></div>)}
@@ -73,7 +73,7 @@ function ObRow({ o }: { o: Obligatoria }) {
   const a = o.item!
   const hecho = o.estado === 'hecho'
   const now = nowMin()
-  const cur = !!a.hora && !o.estado && toMin(a.hora) <= now && now < toMin(a.hora) + 60
+  const cur = !!a.hora && !o.estado && toMin(a.hora) <= now && now < toMin(a.hora) + duracionBloque(a)
   const hs = repartir(d, f).get(a.que) ?? []
   const marcar = (v?: 'hecho' | 'no') => {
     const antes = useStore.getState()

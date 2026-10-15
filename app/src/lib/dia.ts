@@ -1,7 +1,7 @@
 import type { Data } from './store'
 import type { AgendaItem, Habit, Suceso, TipoSuceso } from './types'
 import type { Route } from './ui'
-import { agendaDe, estadoObligatoria, excusaDe, habitsFor, momentoDe, toMin } from './logic'
+import { agendaDe, duracionBloque, estadoObligatoria, excusaDe, habitsFor, momentoDe, toMin } from './logic'
 import { ahoraHHMM, comidasDelDia, ordinal } from './ayuno'
 
 // El día sin grilla: lo obligatorio (con o sin hora) y lo que va pasando.
@@ -68,7 +68,9 @@ export const eventosDelDia = (d: Data, f: string): Evento[] => {
   for (const t of d.tareas ?? []) if (t.hecha === f) ev.push({ id: `t-${t.id}`, hora: horas[`t:${t.id}`], icon: 'list-todo', texto: t.texto, detalle: 'tarea hecha' })
   if (ci?.animoNoche) ev.push({ id: 'noche', hora: horas['ci:noche'], icon: 'moon', texto: 'Check-in de la noche', detalle: ci.victoria ? `victoria: ${ci.victoria}` : undefined })
   // Con hora primero (lo más reciente arriba); lo que no tiene hora queda al final.
-  return ev.sort((a, b) => (b.hora ?? '').localeCompare(a.hora ?? ''))
+  // Lo anotado de madrugada (antes de las 5) es el final del día, no el principio.
+  const clave = (h?: string) => (!h ? '' : h < '05:00' ? `2${h}` : `1${h}`)
+  return ev.sort((a, b) => clave(b.hora).localeCompare(clave(a.hora)))
 }
 
 /** Marca en qué momento se hizo algo (hábito, obligatoria, tarea) para el registro del día. */
@@ -80,9 +82,9 @@ export const conHora = (d: Data, f: string, clave: string, on: boolean): Data['p
   return { ...d.planDia, [f]: { ...p, horas } }
 }
 
-/** Obligatorias que quedan pendientes con hora ya pasada (para un aviso suave, nunca un castigo). */
+/** Obligatorias pendientes que ya terminaron hace un rato (para un aviso suave, nunca un castigo). */
 export const vencidas = (d: Data, f: string, nowMin: number) =>
-  obligatoriasDe(d, f).filter((o) => o.item && o.hora && !o.estado && toMin(o.hora) + 30 < nowMin)
+  obligatoriasDe(d, f).filter((o) => o.item && o.hora && !o.estado && toMin(o.hora) + duracionBloque(o.item) + 15 < nowMin)
 
 /** ¿Hoy cambió algo respecto de un día normal? Para mostrar "plan cambiado". */
 export const diaCambiado = (d: Data, f: string) => !!d.planDia[f]?.agenda || (d.sucesos ?? []).some((s) => s.fecha === f && s.tipo === 'cambio')
