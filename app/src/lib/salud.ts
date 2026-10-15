@@ -1,6 +1,6 @@
 import { useStore, type Data } from './store'
 import { addDays, today } from './date'
-import { agendaDe, bedtimeFor, castigosPendientes, dayNutrition, duracionBloque, excusaDe, habitScore, habitsFor, hourFmt, levelInfo, sancionActiva, toMin, totalXp } from './logic'
+import { agendaDe, bedtimeFor, castigosPendientes, dayNutrition, duracionBloque, estadoObligatoria, excusaDe, habitScore, habitsFor, hourFmt, levelInfo, sancionActiva, tituloBloque, toMin, totalXp } from './logic'
 import { dow } from './date'
 import type { Salud } from './types'
 
@@ -46,6 +46,8 @@ export interface Resumen {
   nivel: number; liga: string; prioridad?: string; prioridadHecha?: boolean
   castigo?: { tarea: string; vence: string }; sancionHasta?: string
   agenda: { ini: number; fin: number; que: string }[]
+  /** obligatorias del día (bloques de agenda con o sin hora) */
+  obligatorias?: { hechas: number; total: number }
   proteina: { g: number; meta: number }; kcal: { v: number; meta: number }
   pasos?: number; pasosMeta: number
   avisos: Aviso[]
@@ -102,7 +104,9 @@ export const resumen = (d: Data): Resumen => {
     prioridad: ci?.prioridad, prioridadHecha: ci?.prioridadCumplida === 'si',
     castigo: cast ? { tarea: cast.tarea, vence: cast.vence ?? '' } : undefined,
     sancionHasta: sancionActiva(d)?.hasta,
-    agenda: agendaDe(d, f).filter((a) => a.hora).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), que: a.que })),
+    // Solo lo que falta: lo ya hecho (o que hoy no va) no aparece como "ahora" en el widget.
+    agenda: agendaDe(d, f).filter((a) => a.hora && !estadoObligatoria(d, f, a.que)).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), que: tituloBloque(a.que) })),
+    obligatorias: { hechas: agendaDe(d, f).filter((a) => estadoObligatoria(d, f, a.que) === 'hecho').length, total: agendaDe(d, f).length },
     proteina: { g: Math.round(nut.prot), meta: d.profile.protObjetivo }, kcal: { v: Math.round(nut.kcal), meta: d.profile.kcalObjetivo },
     pasos: d.pasos[f], pasosMeta: d.profile.pasosObjetivo ?? 8000,
     avisos: avisosProximos(d),

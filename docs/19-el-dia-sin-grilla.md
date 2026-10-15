@@ -62,3 +62,11 @@ Todo se agrega sin migración y viaja con la sincronización:
 - `PlanDia.horas`: la hora en que se marcó cada cosa.
 - `Data.sucesos`: las notas del día.
 - `AgendaItem.hora` puede quedar vacía: es una obligatoria sin hora. Las funciones que calculan con la hora (ahora, ayuno, widget, carga) ignoran esas obligatorias.
+
+## Widget
+
+El resumen que la app publica para el widget ya no trae los bloques que marcaste como hechos o que hoy no van. Así, "Ahora" y "A las…" muestran lo que de verdad falta.
+
+El resumen también incluye cuántas obligatorias hiciste. El widget grande muestra "OBLIGATORIAS · 1/4" en lugar de "AGENDA". Cuando ya no quedan bloques con hora, el widget mediano muestra cuántas obligatorias sin hora quedan pendientes.
+
+Para ver estos cambios hay que volver a copiar `integraciones/widget-scriptable.js` en Scriptable. El widget viejo sigue funcionando: ya deja de mostrar los bloques hechos, pero no muestra el conteo de obligatorias.

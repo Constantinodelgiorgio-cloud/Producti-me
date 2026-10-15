@@ -88,13 +88,14 @@ function texto(stack, t, size, color, weight = 'regular', mono = false) {
   return x
 }
 
-function ahoraDe(agenda) {
+function ahoraDe(agenda, ob) {
   const n = nowMin()
   const cur = agenda.find((a) => a.ini <= n && a.fin > n)
   if (cur) return { etiqueta: `AHORA · hasta ${hhmm(cur.fin)}`, que: cur.que }
   const next = agenda.find((a) => a.ini > n)
   if (next) return { etiqueta: `A LAS ${hhmm(next.ini)}`, que: next.que }
-  return { etiqueta: 'RESTO DEL DÍA', que: 'Cerrar el día' }
+  if (ob && ob.total && ob.hechas < ob.total) return { etiqueta: 'SIN HORA', que: `${ob.total - ob.hechas} obligatoria${ob.total - ob.hechas === 1 ? '' : 's'} pendiente${ob.total - ob.hechas === 1 ? '' : 's'}` }
+  return { etiqueta: 'RESTO DEL DÍA', que: ob && ob.total ? 'Obligatorias hechas · cerrar el día' : 'Cerrar el día' }
 }
 
 async function crear() {
@@ -125,13 +126,13 @@ async function crear() {
   }
   if (fam === 'accessoryRectangular') {
     texto(w, `${hab.hechos}/${hab.total} hábitos${pasos !== undefined ? ` · ${miles(pasos)} pasos` : ''}`, 13, Color.white(), 'semibold')
-    const a = ahoraDe(r.agenda || [])
+    const a = ahoraDe(r.agenda || [], hoy ? r.obligatorias : undefined)
     texto(w, a.que, 12, new Color('#ffffff', 0.85))
     if (r.castigo) texto(w, `Castigo: ${restante(r.castigo.vence)}`, 11, new Color('#ffffff', 0.7))
     return w
   }
   if (fam === 'accessoryInline') {
-    texto(w, `${hab.hechos}/${hab.total} · ${ahoraDe(r.agenda || []).que}`, 12, Color.white())
+    texto(w, `${hab.hechos}/${hab.total} · ${ahoraDe(r.agenda || [], hoy ? r.obligatorias : undefined).que}`, 12, Color.white())
     return w
   }
 
@@ -160,7 +161,7 @@ async function crear() {
   if (fam !== 'small') {
     fila.addSpacer(18)
     const der = fila.addStack(); der.layoutVertically()
-    const a = ahoraDe(r.agenda || [])
+    const a = ahoraDe(r.agenda || [], hoy ? r.obligatorias : undefined)
     texto(der, a.etiqueta, 9, C.tone2, 'regular', true)
     const q = der.addText(a.que); q.font = Font.semiboldSystemFont(14); q.textColor = C.t1; q.lineLimit = 2; q.minimumScaleFactor = 0.8
     der.addSpacer(4)
@@ -178,7 +179,7 @@ async function crear() {
 
   if (fam === 'large') {
     w.addSpacer(12)
-    texto(w, 'AGENDA', 9, C.tone2, 'regular', true)
+    texto(w, r.obligatorias && hoy ? `OBLIGATORIAS · ${r.obligatorias.hechas}/${r.obligatorias.total}` : 'AGENDA', 9, C.tone2, 'regular', true)
     w.addSpacer(4)
     const n = nowMin()
     for (const a of (r.agenda || []).filter((x) => x.fin > n).slice(0, 5)) {
