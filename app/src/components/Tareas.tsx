@@ -3,6 +3,7 @@ import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, dow, today, uid } from '../lib/date'
 import { bedtimeFor, compliance, hourFmt, nowMin, planDelDia, toMin } from '../lib/logic'
+import { conHora } from '../lib/dia'
 import type { Tarea } from '../lib/types'
 import { Icon } from './Icon'
 import { CheckBox } from './HabitRow'
@@ -40,7 +41,7 @@ export const TareasHoy = () => {
   const uso = libres ? plan / libres : plan ? 2 : 0
   const toggle = (t: Tarea) => {
     const prev = t.hecha
-    d.set((s) => ({ tareas: s.tareas.map((x) => (x.id === t.id ? { ...x, hecha: prev ? undefined : f } : x)) }))
+    d.set((s) => ({ tareas: s.tareas.map((x) => (x.id === t.id ? { ...x, hecha: prev ? undefined : f } : x)), planDia: conHora(s, f, `t:${t.id}`, !prev) }))
     if (!prev) ui.notify(`Hecho: ${t.texto}`, () => useStore.getState().set((s) => ({ tareas: s.tareas.map((x) => (x.id === t.id ? { ...x, hecha: undefined } : x)) })))
   }
   const add = () => {

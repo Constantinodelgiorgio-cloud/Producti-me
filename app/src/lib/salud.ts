@@ -102,7 +102,7 @@ export const resumen = (d: Data): Resumen => {
     prioridad: ci?.prioridad, prioridadHecha: ci?.prioridadCumplida === 'si',
     castigo: cast ? { tarea: cast.tarea, vence: cast.vence ?? '' } : undefined,
     sancionHasta: sancionActiva(d)?.hasta,
-    agenda: agendaDe(d, f).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), que: a.que })),
+    agenda: agendaDe(d, f).filter((a) => a.hora).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), que: a.que })),
     proteina: { g: Math.round(nut.prot), meta: d.profile.protObjetivo }, kcal: { v: Math.round(nut.kcal), meta: d.profile.kcalObjetivo },
     pasos: d.pasos[f], pasosMeta: d.profile.pasosObjetivo ?? 8000,
     avisos: avisosProximos(d),

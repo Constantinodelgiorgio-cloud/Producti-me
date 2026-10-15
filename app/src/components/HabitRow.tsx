@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { excusaDe, semanaDe, streak } from '../lib/logic'
+import { conHora } from '../lib/dia'
+import { today } from '../lib/date'
 import type { Habit, HabitState } from '../lib/types'
 import { Icon, habitIcon } from './Icon'
 
@@ -16,7 +18,8 @@ export const useSetHabit = () => {
       const day = { ...(s.habitLog[fecha] ?? {}) }
       if (v) day[h.id] = v
       else delete day[h.id]
-      return { habitLog: { ...s.habitLog, [fecha]: day } }
+      // La hora en que lo marcaste alimenta "Lo que va pasando" (solo hoy; un día pasado no tiene hora real).
+      return { habitLog: { ...s.habitLog, [fecha]: day }, ...(fecha === today() ? { planDia: conHora(s, fecha, h.id, v === 'hecho' || v === 'minimo') } : {}) }
     })
     write(next)
     if (!next) return

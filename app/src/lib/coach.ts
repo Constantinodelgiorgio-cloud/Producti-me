@@ -84,7 +84,7 @@ export const chatContext = (d: Data) => {
       agenda: agendaDe(d, f),
       cambiado: !!d.planDia[f],
       excusados: d.planDia[f]?.excusas,
-      ...(f === t ? { habitos: habitsFor(d.habits, f).map((h) => ({ id: h.id, nombre: h.nombre, momento: momentoDe(h, d, f), estado: log[h.id] ?? 'pendiente', minimo: h.minimo })) } : {}),
+      ...(f === t ? { habitos: habitsFor(d.habits, f).map((h) => ({ id: h.id, nombre: h.nombre, momento: momentoDe(h, d, f), estado: log[h.id] ?? 'pendiente', minimo: h.minimo, ...(h.obligatorio ? { obligatorio: true } : {}) })), obligatoriasHechas: d.planDia[f]?.hechos, loQuePaso: (d.sucesos ?? []).filter((s) => s.fecha === f).map((s) => `${s.hora} ${s.tipo}: ${s.texto}`) } : {}),
     }
   })
   const otros = d.habits.filter((h) => h.activo).map((h) => ({ id: h.id, nombre: h.nombre, dias: h.dias.length ? h.dias : 'todos' }))

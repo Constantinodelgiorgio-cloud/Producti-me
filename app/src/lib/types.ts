@@ -29,6 +29,8 @@ export interface Habit {
   etapa?: 'formacion' | 'mantenimiento'
   /** fecha en que empezó (para la graduación) */
   desde?: string
+  /** no negociable: aparece en "Obligatorias" del día */
+  obligatorio?: boolean
 }
 /** reserva = salto de emergencia (2 por semana por hábito): no cuenta como falta */
 export type HabitState = 'hecho' | 'minimo' | 'no' | 'reserva'
@@ -170,7 +172,7 @@ export interface Profile {
 
 export type Pinned = 'fisico' | 'estudio' | 'finanzas' | 'vida'
 export interface Settings {
-  lang: Lang; apiKey: string; coachModel: string; pinned?: Pinned; hoyView?: 'ahora' | 'agenda' | 'enfoque' | 'linea'
+  lang: Lang; apiKey: string; coachModel: string; pinned?: Pinned; hoyView?: 'ahora' | 'dia' | 'agenda' | 'enfoque' | 'linea'
   habitView?: 'grilla' | 'lista'
   /** URL del script de Google (Apps Script) que expone los correos de pagos, y su clave */
   correoUrl?: string; correoToken?: string; correoAuto?: boolean
@@ -193,11 +195,19 @@ export interface Salud { pasos?: number; sueno?: number; fcReposo?: number; kcal
 export interface SesionCuerpo { id: string; fecha: string; tipo: TipoCuerpo; nombre: string; minutos: number; nota?: string; fc?: number }
 
 // ---------- Plan por día (lo que el Coach o vos cambian para una fecha puntual) ----------
+/** hora vacía ('') = obligatoria sin horario fijo (se hace cuando se pueda, pero hoy sí o sí) */
 export interface AgendaItem { hora: string; que: string; intensidad?: Intensity }
+/** Algo que pasó en el día: una nota rápida, un imprevisto, un cambio de plan o algo bueno. */
+export type TipoSuceso = 'nota' | 'imprevisto' | 'cambio' | 'bien'
+export interface Suceso { id: string; fecha: string; hora: string; texto: string; tipo: TipoSuceso }
 export type CategoriaExcusa = 'causa externa' | 'compromiso real' | 'salud' | 'fuerza mayor'
 export interface Excusa { motivo: string; categoria: CategoriaExcusa; alternativa?: string }
 export interface PlanDia {
   agenda?: AgendaItem[]
+  /** estado de cada obligatoria del día (clave = texto del bloque) */
+  hechos?: Record<string, 'hecho' | 'no'>
+  /** hora (HH:MM) en que se marcó cada hábito u obligatoria: alimenta "Lo que va pasando" */
+  horas?: Record<string, string>
   excusas?: Record<string, Excusa>
   momentos?: Record<string, Momento>
 }

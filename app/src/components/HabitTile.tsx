@@ -145,9 +145,13 @@ export const HabitSheet = () => {
           <Icon name="trophy" /><span className="grow">Graduar este hábito<small>Fuerza {Math.round(F * 100)} % y más de 60 días: pasa a mantenimiento, con menos peso en tu día</small></span>
         </button>}
         <div className="link-row as-field">
-          <Icon name="clock" size={16} /><label htmlFor="h-hora" className="grow">Hora fija en la agenda</label>
+          <Icon name="lock" size={16} /><span className="grow"><label htmlFor="h-ob">Obligatorio</label><small className="cap" style={{ display: 'block' }}>{h.obligatorio ? 'Aparece en "Obligatorias de hoy"' : 'Flexible: se hace cuando el día deja un hueco'}</small></span>
+          <button id="h-ob" role="switch" aria-checked={!!h.obligatorio} className="switch" onClick={() => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, obligatorio: !x.obligatorio || undefined } : x) }))}><i /></button>
+        </div>
+        <div className="link-row as-field">
+          <Icon name="clock" size={16} /><label htmlFor="h-hora" className="grow">Hora (opcional)</label>
           <input id="h-hora" type="time" value={h.hora ?? ''} onChange={(e) => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: e.target.value || undefined } : x) }))} />
-          {h.hora && <button className="btn btn-ghost btn-sm" onClick={() => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: undefined } : x) }))}>Automática</button>}
+          {h.hora && <button className="btn btn-ghost btn-sm" onClick={() => d.set((s0) => ({ habits: s0.habits.map((x) => x.id === h.id ? { ...x, hora: undefined } : x) }))}>Sin hora</button>}
         </div>
         <button className="link-row" onClick={() => setModo('icono')}><Icon name="grid" size={16} />Cambiar ícono<Icon name="chevron-right" size={16} /></button>
       </div>}

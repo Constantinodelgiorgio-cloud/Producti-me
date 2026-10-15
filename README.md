@@ -28,6 +28,7 @@ La app está en [`app/`](app). Para instalarla en el iPhone, seguí [07 · App f
 | [16 · Investigación de apps comparables](docs/16-investigacion-apps-comparables.md) | Qué hacen Whoop, Oura, MacroFactor, Sunsama, How We Feel, YNAB y otras, evidencia y 24 mejoras priorizadas |
 | [17 · Salto de calidad](docs/17-salto-de-calidad.md) | Las mejoras implementadas, cómo funcionan y sus límites · **implementado** |
 | [18 · Comidas y ayuno](docs/18-comidas-y-ayuno.md) | Comidas numeradas con hora y contador de ayuno con hitos y fuentes científicas |
+| [19 · El día sin grilla](docs/19-el-dia-sin-grilla.md) | Obligatorias del día (con o sin hora) y registro de lo que va pasando, en vez de horarios sugeridos |
 
 ## Próximo paso
 

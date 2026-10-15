@@ -14,6 +14,7 @@ import { EstadosPanel } from '../components/Estados'
 import { useScrollToSub } from '../components/useScrollTo'
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const GRUPOS = [{ id: 'obligatorios', label: 'Obligatorios' }, { id: 'flexibles', label: 'Cuando puedas' }, { id: 'hechos', label: 'Marcados' }] as const
 
 export default function Habitos() {
   useScrollToSub()
@@ -33,6 +34,8 @@ export default function Habitos() {
   const marked = list.filter((h) => log[h.id] || excusaDe(d, fecha, h.id))
   const areasHoy = AREAS.filter((a) => habitsFor(d.habits, fecha).some((h) => h.area === a.id))
   const done = list.filter((h) => log[h.id] === 'hecho' || log[h.id] === 'minimo').length
+  // Sin franjas horarias: lo obligatorio arriba, lo flexible después y lo ya marcado al final.
+  const grupoDe = (h: Habit) => (log[h.id] || excusaDe(d, fecha, h.id) ? 'hechos' : h.obligatorio ? 'obligatorios' : 'flexibles')
 
   if (edit) return <Editor onClose={() => setEdit(false)} />
 
@@ -67,13 +70,12 @@ export default function Habitos() {
           </p>
           {view === 'grilla' ? (
             list.length === 0 ? <div className="panel"><Empty icon="check" title="Sin hábitos este día">Ningún hábito activo aplica a este día.</Empty></div> :
-            MOMENTOS.map((m) => {
-              const hs = list.filter((h) => momentoDe(h, d, fecha) === m.id)
+            GRUPOS.map((g) => {
+              const hs = list.filter((h) => grupoDe(h) === g.id)
               if (!hs.length) return null
-              const n = hs.filter((h) => log[h.id] || excusaDe(d, fecha, h.id)).length
               return (
-                <section key={m.id} className="mgroup">
-                  <div className="sec" style={{ margin: '18px 2px 10px' }}><span className="eyebrow">{m.label}</span><span className="cap num">{n}/{hs.length}</span></div>
+                <section key={g.id} className="mgroup">
+                  <div className="sec" style={{ margin: '18px 2px 10px' }}><span className="eyebrow">{g.label}</span><span className="cap num">{hs.length}</span></div>
                   <div className="tile-grid">{hs.map((h) => <HabitTile key={h.id} h={h} fecha={fecha} />)}</div>
                 </section>
               )
@@ -143,7 +145,8 @@ function HabitEditor({ h, onDelete }: { h: Habit; onDelete: () => void }) {
       <div className="form-grid">
         <Field label="Nombre" id={`n-${h.id}`}><input id={`n-${h.id}`} value={h.nombre} onChange={(e) => up({ nombre: e.target.value })} /></Field>
         <Field label="Área" id={`a-${h.id}`}><select id={`a-${h.id}`} value={h.area} onChange={(e) => up({ area: e.target.value as AreaId })}>{AREAS.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}</select></Field>
-        <Field label="Momento del día" id={`m-${h.id}`}><select id={`m-${h.id}`} value={momentoDe(h)} onChange={(e) => up({ momento: e.target.value as Momento })}>{MOMENTOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select></Field>
+        <Field label="Tipo" id={`o-${h.id}`}><select id={`o-${h.id}`} value={h.obligatorio ? 'si' : 'no'} onChange={(e) => up({ obligatorio: e.target.value === 'si' || undefined })}><option value="no">Flexible (cuando pueda)</option><option value="si">Obligatorio (no se negocia)</option></select></Field>
+        <Field label="Mejor momento (sugerencia)" id={`m-${h.id}`}><select id={`m-${h.id}`} value={momentoDe(h)} onChange={(e) => up({ momento: e.target.value as Momento })}>{MOMENTOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</select></Field>
         <Field label="Versión mínima" id={`v-${h.id}`}><input id={`v-${h.id}`} value={h.minimo ?? ''} placeholder="Para días malos" onChange={(e) => up({ minimo: e.target.value || undefined })} /></Field>
         <Field label="XP" id={`x-${h.id}`}><NumInput id={`x-${h.id}`} decimals={false} value={h.xp} onValue={(n) => up({ xp: n ?? 0 })} /></Field>
         <Field label="Meta semanal (veces)" id={`w-${h.id}`}><NumInput id={`w-${h.id}`} decimals={false} placeholder="Todos los días" value={h.porSemana ?? ''} onValue={(n) => up({ porSemana: n && n > 0 && n < 7 ? n : undefined })} /></Field>

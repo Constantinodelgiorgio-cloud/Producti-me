@@ -11,7 +11,9 @@ const score = (s?: string) => (s === 'hecho' ? 1 : s === 'minimo' ? 0.5 : 0)
 
 /** Agenda de una fecha: la del plan puntual si existe; si no, la base del día de la semana. */
 export const agendaDe = (d: Pick<Data, 'planDia' | 'profile'>, fecha: string): AgendaItem[] =>
-  [...(d.planDia?.[fecha]?.agenda ?? d.profile.agenda[dow(fecha)] ?? [])].sort((a, b) => a.hora.localeCompare(b.hora))
+  [...(d.planDia?.[fecha]?.agenda ?? d.profile.agenda[dow(fecha)] ?? [])].sort((a, b) => (a.hora || '99').localeCompare(b.hora || '99'))
+/** Estado de una obligatoria del día (hecha, no se hizo o pendiente). */
+export const estadoObligatoria = (d: Pick<Data, 'planDia'>, fecha: string, que: string) => d.planDia?.[fecha]?.hechos?.[que]
 export const excusaDe = (d: Pick<Data, 'planDia'>, fecha: string, habitId: string) => d.planDia?.[fecha]?.excusas?.[habitId]
 
 // ---------- Estados planificados: períodos en que ciertas áreas no cuentan ----------
@@ -539,7 +541,7 @@ export const recuerdos = (d: Data): Note[] => {
 // ---------- Hoy: agenda, momento de los hábitos, próxima acción ----------
 export const MOMENTOS: { id: Momento; label: string; hasta: string }[] = [
   { id: 'manana', label: 'Mañana', hasta: 'al despertar' },
-  { id: 'dia', label: 'Durante el día', hasta: 'flexible' },
+  { id: 'dia', label: 'Cuando pueda', hasta: 'flexible' },
   { id: 'tarde', label: 'Tarde', hasta: 'antes de la cena' },
   { id: 'noche', label: 'Noche', hasta: 'cierre del día' },
 ]
@@ -558,7 +560,7 @@ export const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Numb
 export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 /** Bloque de la agenda de hoy en curso (según su duración) o, si no hay, el próximo. */
 export const agendaAhora = (d: Data) => {
-  const items = agendaDe(d, today())
+  const items = agendaDe(d, today()).filter((a) => a.hora && !estadoObligatoria(d, today(), a.que))
   const n = nowMin()
   const cur = items.find((a) => toMin(a.hora) <= n && toMin(a.hora) + duracionBloque(a) > n)
   const next = cur ?? items.find((a) => toMin(a.hora) > n)
@@ -607,7 +609,7 @@ export interface PlanDelDia { bloques: PlanBloque[]; slots: SlotHabitos[]; sinHo
  */
 export const planDelDia = (d: Data, f: string, wake: number, bed: number): PlanDelDia => {
   const hs = habitsFor(d.habits, f)
-  const bloques: PlanBloque[] = agendaDe(d, f).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), item: a, habitos: [] }))
+  const bloques: PlanBloque[] = agendaDe(d, f).filter((a) => a.hora).map((a) => ({ ini: toMin(a.hora), fin: toMin(a.hora) + duracionBloque(a), item: a, habitos: [] }))
   const ocupado: [number, number][] = bloques.map((b) => [b.ini, b.fin])
   const sinHora: Habit[] = []
   const dormir: Habit[] = []
