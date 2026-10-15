@@ -4,7 +4,7 @@ import { useUI } from '../lib/ui'
 import { addDays, dow, parse, today, weekStart } from '../lib/date'
 import {
   agendaAhora, avisos, bedtimeFor, dayNutrition, excusaDe, habitScore, habitsFor, hourFmt, last, levelInfo, MOMENTOS,
-  momentoDe, nowMin, recomendaciones, recuerdos, sancionActiva, sleepHours, totalXp, weekMedals,
+  momentoDe, nowMin, recomendaciones, tituloBloque, toMin, recuerdos, sancionActiva, sleepHours, totalXp, weekMedals,
 } from '../lib/logic'
 import type { Habit } from '../lib/types'
 import { Icon } from '../components/Icon'
@@ -79,7 +79,10 @@ function Ahora() {
   const f = today()
   const ds = dayState(d, f)
   const ci = d.checkins[f]
-  const ahora = agendaAhora(d)
+  // De madrugada (antes de la hora de despertar) lo que importa es dormir, no la clase de dentro de 6 horas.
+  const madrugada = nowMin() < toMin(ci?.horaDespertar ?? d.profile.despertar[dow(f)]) && new Date().getHours() < 6
+  const ahora = madrugada ? null : agendaAhora(d)
+  const proximo = madrugada ? agendaAhora(d) : null
   const wakeTomorrow = d.profile.despertar[dow(addDays(f, 1))]
   const bed = bedtimeFor(wakeTomorrow, d.profile.suenoMin)
   const wm = weekMedals(d, weekStart(f))
@@ -114,8 +117,9 @@ function Ahora() {
             </div>
             <div className="now-main">
               <div style={{ minWidth: 0 }}>
-                <div className="cap mono">{ahora ? `${ahora.hora}–${hourFmt(ahora.fin)}` : `antes de las ${bed}`}{ahora?.intensidad && <span className={`int ${ahora.intensidad}`} style={{ marginLeft: 8 }}>{ahora.intensidad}</span>}{d.planDia[f]?.agenda && <span className="chip-mini">plan cambiado</span>}</div>
-                <div className="now-title xl">{ahora ? ahora.que : 'Acostarte para dormir ' + dec(d.profile.suenoMin) + ' h'}</div>
+                <div className="cap mono">{ahora ? `${ahora.hora}–${hourFmt(ahora.fin)}` : madrugada ? `te levantás a las ${ci?.horaDespertar ?? d.profile.despertar[dow(f)]}` : `antes de las ${bed}`}{ahora?.intensidad && <span className={`int ${ahora.intensidad}`} style={{ marginLeft: 8 }}>{ahora.intensidad}</span>}{d.planDia[f]?.agenda && <span className="chip-mini">plan cambiado</span>}</div>
+                <div className="now-title xl">{ahora ? tituloBloque(ahora.que) : madrugada ? 'Es hora de dormir' : 'Acostarte para dormir ' + dec(d.profile.suenoMin) + ' h'}</div>
+                {proximo && <div className="cap" style={{ marginTop: 6 }}>Lo primero: {tituloBloque(proximo.que)} a las {proximo.hora}</div>}
               </div>
               {ahora && /revisi/i.test(ahora.que) && <button className="btn btn-quiet btn-sm" onClick={() => ui.go('revision')}>Preparar<Icon name="arrow-right" size={15} /></button>}
             </div>

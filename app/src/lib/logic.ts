@@ -566,6 +566,8 @@ export const agendaAhora = (d: Data) => {
   const next = cur ?? items.find((a) => toMin(a.hora) > n)
   return next ? { ...next, faltan: toMin(next.hora) - n, fin: toMin(next.hora) + duracionBloque(next) } : null
 }
+/** Título de un bloque sin la hora de fin escrita a mano ("Facultad (hasta 11:40)" → "Facultad"), que ya se muestra aparte. */
+export const tituloBloque = (que: string) => que.replace(/\s*\(hasta \d{1,2}[:.]\d{2}\)|\s+hasta \d{1,2}[:.]\d{2}$/i, '').trim() || que
 export const hourFmt = (min: number) => `${String(Math.floor(((min % 1440) + 1440) % 1440 / 60)).padStart(2, '0')}:${String(((min % 60) + 60) % 60).padStart(2, '0')}`
 
 // ---------- Agenda del día: bloques con duración y hábitos ubicados en los huecos ----------

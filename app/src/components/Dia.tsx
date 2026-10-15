@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { dow, today, uid } from '../lib/date'
-import { excusaDe, habitsFor, hourFmt, nowMin, toMin } from '../lib/logic'
+import { duracionBloque, excusaDe, habitsFor, hourFmt, nowMin, tituloBloque, toMin } from '../lib/logic'
 import { conHora, eventosDelDia, flexiblesDe, obligatoriasDe, TIPOS_SUCESO, vencidas, type Obligatoria } from '../lib/dia'
 import { ahoraHHMM } from '../lib/ayuno'
 import { hayRiesgo } from '../lib/seguridad'
@@ -107,8 +107,8 @@ function ObRow({ o }: { o: Obligatoria }) {
     <div className={`ob ${hecho ? 'is-done' : o.estado === 'no' ? 'is-no' : ''} ${cur ? 'cur' : ''}`}>
       <div className="ob-main">
         <CheckBox on={hecho} label={`${hecho ? 'Desmarcar' : 'Marcar hecha'}: ${a.que}`} onClick={() => marcar(hecho ? undefined : 'hecho')} />
-        <span className={`ob-hora mono ${a.hora ? '' : 'flex'}`}>{a.hora || 'sin hora'}</span>
-        <span className="grow ob-t"><span className="tt">{a.que}</span>{(o.estado === 'no' || cur) && <small>{o.estado === 'no' ? 'hoy no se hizo' : 'ahora'}</small>}</span>
+        <span className={`ob-hora mono ${a.hora ? '' : 'flex'}`}>{a.hora || 'sin hora'}{a.hora && duracionBloque(a) !== 60 && <small>{hourFmt(toMin(a.hora) + duracionBloque(a))}</small>}</span>
+        <span className="grow ob-t"><span className="tt">{tituloBloque(a.que)}</span>{(o.estado === 'no' || cur) && <small>{o.estado === 'no' ? 'hoy no se hizo' : 'ahora'}</small>}</span>
         {a.intensidad && <span className={`int ${a.intensidad}`}>{a.intensidad}</span>}
         <button className="min-btn" aria-label={`Opciones: ${a.que}`} aria-expanded={menu} onClick={() => setMenu(!menu)}><Icon name="ellipsis" size={14} /></button>
       </div>

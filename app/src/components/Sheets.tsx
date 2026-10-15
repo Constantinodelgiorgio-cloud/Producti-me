@@ -5,7 +5,7 @@ import { dow, today, uid } from '../lib/date'
 import { bedtimeFor, sleepHours } from '../lib/logic'
 import type { CheckIn, Pinned } from '../lib/types'
 import { Icon } from './Icon'
-import { LINEAS } from '../lib/seguridad'
+import { hayRiesgo, LINEAS } from '../lib/seguridad'
 import { comidaSugerida, momentoPorHora } from '../lib/ayuno'
 import { Field, NumInput, Scale, VoiceText } from './ui'
 
@@ -72,9 +72,25 @@ export const RegistrarSheet = () => {
     ui.closeSheet()
     ui.notify(`${m.nombre} · +${m.kcal} kcal · ${m.prot} g de proteína`, () => set((s) => ({ meals: s.meals.filter((x) => x.id !== id) })))
   }
+  const [nota, setNota] = useState('')
+  const anotar = () => {
+    const texto = nota.trim()
+    if (!texto) return
+    const id = uid()
+    set((s) => ({ sucesos: [...(s.sucesos ?? []), { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto, tipo: 'nota' }] }))
+    setNota('')
+    ui.closeSheet()
+    if (hayRiesgo(texto)) { ui.openSheet('ayuda'); return }
+    ui.notify('Anotado en "Lo que va pasando"', () => set((s) => ({ sucesos: s.sucesos.filter((x) => x.id !== id) })))
+  }
   return (
     <Sheet label="Registrar">
       <div className="sheet-head"><h2>Registrar</h2><span className="kbd only-desk">R</span></div>
+      <form className="reg-pasa" onSubmit={(e) => { e.preventDefault(); anotar() }}>
+        <Icon name="pen-line" size={16} />
+        <input aria-label="Anotar lo que pasó" placeholder="Anotar lo que pasó…" value={nota} onChange={(e) => setNota(e.target.value)} />
+        <button className="cb-send" aria-label="Anotar" disabled={!nota.trim()}><Icon name="arrow-up" size={16} stroke={2.2} /></button>
+      </form>
       {recent.length > 0 && <>
         <div className="eyebrow" style={{ marginBottom: 8 }}>Repetir lo último</div>
         <div className="hscroll" style={{ marginBottom: 16 }}>{recent.map((m) => <button key={m.id} className="food" onClick={() => repeat(m)}><Icon name="undo" size={14} />{m.nombre}<small>{m.prot} g P</small></button>)}</div>
