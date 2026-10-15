@@ -1117,3 +1117,5 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 .despues .ic { color: var(--t3); }
 .despues:hover span:not(.cap) { color: var(--t1); }
 @container app (min-width: 980px) { .dia-grid .dia-cierre { grid-column: 1 / -1; } }
+.note-box.pista { align-items: flex-start; margin: 4px 0 6px; }
+.note-box.pista .icon-btn { margin: -6px -6px 0 0; flex: none; }

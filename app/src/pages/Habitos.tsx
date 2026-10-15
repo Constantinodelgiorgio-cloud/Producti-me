@@ -8,6 +8,7 @@ import type { AreaId, Habit, Momento } from '../lib/types'
 import { Icon } from '../components/Icon'
 import { Bar, Empty, Field, Medal, NumInput, PageHead, Ring, Seg } from '../components/ui'
 import { HabitRow } from '../components/HabitRow'
+import { flexiblesDe } from '../lib/dia'
 import { HabitTile } from '../components/HabitTile'
 import { CastigosPanel } from '../components/Castigos'
 import { EstadosPanel } from '../components/Estados'
@@ -28,7 +29,11 @@ export default function Habitos() {
   const ws = weekStart(today())
   const days = weekDays(ws)
   const wm = weekMedals(d, ws)
-  const list = habitsFor(d.habits, fecha).filter((h) => filter === 'todos' || h.area === filter)
+  // Mismo orden que "Cuando puedas" en Hoy: primero lo que encaja con este momento.
+  const orden = new Map(flexiblesDe(d, fecha).map((h, i) => [h.id, i]))
+  const list = habitsFor(d.habits, fecha).filter((h) => filter === 'todos' || h.area === filter).sort((a, b) => (orden.get(a.id) ?? -1) - (orden.get(b.id) ?? -1))
+  const pista = !d.habits.some((h) => h.obligatorio) && !(d.settings.pistas ?? []).includes('obligatorio')
+  const cerrarPista = () => d.set((s) => ({ settings: { ...s.settings, pistas: [...(s.settings.pistas ?? []), 'obligatorio'] } }))
   const log = d.habitLog[fecha] ?? {}
   const pend = list.filter((h) => !log[h.id] && !excusaDe(d, fecha, h.id))
   const marked = list.filter((h) => log[h.id] || excusaDe(d, fecha, h.id))
@@ -68,6 +73,7 @@ export default function Habitos() {
           <p className="cap" style={{ margin: '12px 2px' }}>
             {fecha === today() ? 'Hoy' : `Editando el ${fmtShort(fecha)}`} · {view === 'grilla' ? 'tocá para marcar hecho; mantené presionado para versión mínima, no hecho o excusa.' : 'deslizá a la derecha para hecho y a la izquierda para no hecho.'}
           </p>
+          {pista && <div className="note-box pista"><Icon name="lock" size={16} /><span className="grow">¿Hay algo que no se negocia, como un remedio? Abrilo con los tres puntos y prendé <b>Obligatorio</b>: va a aparecer arriba y en "Obligatorias de hoy".</span><button className="icon-btn sm" aria-label="Cerrar aviso" onClick={cerrarPista}><Icon name="x" size={15} /></button></div>}
           {view === 'grilla' ? (
             list.length === 0 ? <div className="panel"><Empty icon="check" title="Sin hábitos este día">Ningún hábito activo aplica a este día.</Empty></div> :
             GRUPOS.map((g) => {

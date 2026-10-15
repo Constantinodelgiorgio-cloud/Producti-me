@@ -184,6 +184,8 @@ export interface Settings {
   castigos?: 'reparable' | 'duro'
   /** áreas apagadas: no aparecen en Áreas ni en el menú lateral */
   areasOff?: string[]
+  /** avisos de ayuda que ya se cerraron */
+  pistas?: string[]
   /** cómo guía Cuerpo sin mirar la pantalla */
   guia?: { sonido: boolean; vibracion: boolean; voz: boolean }
 }
