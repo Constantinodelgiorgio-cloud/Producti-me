@@ -3,6 +3,7 @@ import { useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { compliance, last, weekMedals } from '../lib/logic'
 import { addDays, fmtShort, today, weekDays, weekStart } from '../lib/date'
+import { obligatoriasDe } from '../lib/dia'
 import { AREAS } from '../lib/seed'
 import type { Review } from '../lib/types'
 import { Icon } from '../components/Icon'
@@ -23,6 +24,14 @@ export default function Revision() {
   const entrenos = d.workouts.filter((w) => w.fecha >= ws).length
   const est = d.study.filter((s) => s.fecha >= ws).reduce((a, s) => a + s.minutos, 0) / 60
   const juntadas = d.social.filter((s) => s.fecha >= ws && s.tipo === 'juntada').length
+  // Lo que fue pasando: los días cambian; mirar la semana completa ayuda a ajustar el diseño, no la voluntad.
+  const diasSem = weekDays(ws).filter((f) => f <= today())
+  const sucs = (d.sucesos ?? []).filter((x) => x.fecha >= ws && x.fecha <= today())
+  const buenos = sucs.filter((x) => x.tipo === 'bien')
+  const imprevistos = sucs.filter((x) => x.tipo === 'imprevisto' || x.tipo === 'cambio').length
+  // Solo los días en que se usaron las obligatorias (y hoy): antes de esta función no había nada que marcar.
+  const obsSem = diasSem.filter((f) => f === today() || d.planDia[f]?.hechos).flatMap((f) => obligatoriasDe(d, f).filter((o) => o.item))
+  const obsHechas = obsSem.filter((o) => o.estado === 'hecho').length
   const peso = d.body.filter((b) => b.fecha >= ws && b.peso).at(-1)?.peso
   const hist = Array.from({ length: 12 }, (_, i) => addDays(ws, -7 * (11 - i))).map((w) => {
     const c = compliance(d, weekDays(w).filter((f) => f <= today()))
@@ -37,7 +46,7 @@ export default function Revision() {
     setLoading(true)
     try {
       const { askCoach } = await import('../lib/coach')
-      setCoach(await askCoach(useStore.getState(), `Hacé la revisión semanal. Lo que salió bien: ${r.bien}. Lo que salió mal: ${r.mal}. Proponé 3 prioridades concretas para la semana que viene y un ajuste de hábitos.`))
+      setCoach(await askCoach(useStore.getState(), `Hacé la revisión semanal. Lo que salió bien: ${r.bien}. Lo que salió mal: ${r.mal}. Obligatorias cumplidas: ${obsHechas}/${obsSem.length}. Imprevistos y cambios de plan anotados: ${imprevistos}${sucs.length ? ` (${sucs.filter((x) => x.tipo !== 'bien').map((x) => x.texto).slice(0, 8).join('; ')})` : ''}. Lo bueno que anotó: ${buenos.map((x) => x.texto).join('; ') || 'nada'}. Proponé 3 prioridades concretas para la semana que viene y un ajuste de hábitos.`))
     } catch (e) { setCoach(`No se pudo consultar al coach: ${e instanceof Error ? e.message : String(e)}`) } finally { setLoading(false) }
   }
   const kpis: [string, string | number][] = [['Cumplimiento', wm.global === null ? '—' : `${Math.round(wm.global * 100)} %`], ['Entrenamientos', entrenos], ['Horas de estudio', est.toFixed(1).replace('.', ',')], ['Juntadas', juntadas], ['Peso', peso ?? '—'], ['Ahorro', last(d.savings)?.valor.toLocaleString('es-AR') ?? '—']]
@@ -52,6 +61,19 @@ export default function Revision() {
           {aprend.length > 0 && <section className="panel pad"><h2 className="h2"><Icon name="notebook-pen" size={16} />Lo que se cruzó esta semana</h2>
             {aprend.map((a) => <div className="list-row" key={a.id}><span className="grow">{d.habits.find((h) => h.id === a.habitId)?.nombre ?? 'Hábito'}<small className="cap" style={{ display: 'block' }}>{a.que}{a.distinto ? ` → ${a.distinto}` : ''}</small></span><span className="cap">{fmtShort(a.fecha)}</span></div>)}
             <p className="cap" style={{ marginTop: 8 }}>Si algo se repite, es un problema de diseño del día, no de voluntad: ajustá el horario o la versión mínima.</p>
+          </section>}
+          {(sucs.length > 0 || obsSem.length > 0) && <section className="panel pad">
+            <h2 className="h2"><Icon name="history" size={16} />Lo que fue pasando</h2>
+            <div className="kpis" style={{ marginTop: 4 }}>
+              <div className="kpi"><span className="cap">Obligatorias</span><span className="val-m">{obsHechas}/{obsSem.length}</span></div>
+              <div className="kpi"><span className="cap">Imprevistos y cambios</span><span className="val-m">{imprevistos}</span></div>
+              <div className="kpi"><span className="cap">Cosas buenas</span><span className="val-m">{buenos.length}</span></div>
+            </div>
+            {buenos.length > 0 && <>
+              <div className="stack" style={{ gap: 2, marginTop: 12 }}>{buenos.slice(-6).map((x) => <div className="list-row" key={x.id}><Icon name="star" size={14} className="muted" /><span className="grow">{x.texto}</span><span className="cap">{fmtShort(x.fecha)}</span></div>)}</div>
+              <button className="btn btn-quiet btn-sm" style={{ marginTop: 10 }} onClick={() => setR({ ...r, bien: [r.bien.trim(), ...buenos.map((x) => `· ${x.texto}`)].filter(Boolean).join('\n') })}>Usar en "¿Qué salió bien?"</button>
+            </>}
+            {imprevistos >= 3 && <p className="cap" style={{ marginTop: 10 }}>{imprevistos} cambios en la semana: si se repiten los mismos, conviene sacarlos de las obligatorias fijas o dejarlos sin hora.</p>}
           </section>}
           <MesCard />
           <Card title="Reflexión" icon="notebook-pen">
