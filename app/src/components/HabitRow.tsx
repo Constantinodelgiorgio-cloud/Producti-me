@@ -52,8 +52,9 @@ export const HabitRow = ({ h, fecha, compact }: { h: Habit; fecha: string; compa
   const bg = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x0: number; dx: number; locked: boolean } | null>(null)
   const sem = useStore((x) => (h.porSemana ? semanaDe(x, h, fecha) : 0))
+  const hora = useStore((x) => (st === 'hecho' || st === 'minimo' ? x.planDia[fecha]?.horas?.[h.id] : undefined))
   const cls = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : st === 'reserva' || ex ? 'is-ex' : ''
-  const meta = st === 'reserva' ? 'reserva de emergencia' : ex && !st ? `excusado · ${ex.motivo}` : [h.porSemana && `${sem}/${h.porSemana} esta semana`, h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} ${h.porSemana ? 'semanas' : 'días'} seguid${h.porSemana ? 'as' : 'os'}`].filter(Boolean).join(' · ')
+  const meta = st === 'reserva' ? 'reserva de emergencia' : ex && !st ? `excusado · ${ex.motivo}` : [hora && `${st === 'minimo' ? 'mínimo' : 'hecho'} a las ${hora}`, h.porSemana && `${sem}/${h.porSemana} esta semana`, !hora && h.minimo && `mínimo ${h.minimo}`, s > 1 && `${s} ${h.porSemana ? 'semanas' : 'días'} seguid${h.porSemana ? 'as' : 'os'}`].filter(Boolean).join(' · ')
 
   const onDown = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse' || (e.target as HTMLElement).closest('button')) return

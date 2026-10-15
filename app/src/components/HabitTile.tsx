@@ -40,6 +40,7 @@ export const HabitTile = ({ h, fecha, big }: { h: Habit; fecha: string; big?: bo
   const timer = useRef<number | null>(null)
   const long = useRef(false)
   const sem = h.porSemana ? semanaDe(d, h, fecha) : 0
+  const hora = d.planDia[fecha]?.horas?.[h.id]
   const p = st === 'hecho' ? 1 : st === 'minimo' ? 0.5 : ex ? (ex.alternativa ? 0.5 : 0) : h.porSemana ? Math.min(1, sem / h.porSemana) : Math.min(1, live?.p ?? 0)
   const state = st === 'hecho' ? 'is-done' : st === 'minimo' ? 'is-min' : st === 'no' ? 'is-no' : st === 'reserva' || ex ? 'is-ex' : ''
   const C = 2 * Math.PI * 21
@@ -61,7 +62,7 @@ export const HabitTile = ({ h, fecha, big }: { h: Habit; fecha: string; big?: bo
           <span className="ht-ic">{st === 'hecho' ? <Icon name="check" size={20} stroke={2.4} /> : st === 'no' ? <Icon name="minus" size={18} /> : <Icon name={habitIcon(h)} size={20} />}</span>
         </span>
         <span className="ht-name">{short(h.nombre)}</span>
-        <span className="ht-meta num">{st === 'reserva' ? 'reserva' : ex && !st ? 'excusado' : st === 'minimo' ? 'mínimo' : h.porSemana ? `${sem}/${h.porSemana} semana` : live ? live.label : `+${h.xp} XP`}</span>
+        <span className="ht-meta num">{st === 'reserva' ? 'reserva' : ex && !st ? 'excusado' : st === 'minimo' ? `mínimo${hora ? ` · ${hora}` : ''}` : st === 'hecho' && hora ? `hecho ${hora}` : h.porSemana ? `${sem}/${h.porSemana} semana` : live ? live.label : `+${h.xp} XP`}</span>
         {s > 2 && <span className="ht-streak" title={`${s} días seguidos`}>{s}</span>}
       </button>
       <button className="ht-more" aria-label={`Más opciones: ${h.nombre}`} onClick={() => ui.openSheet('habito', `${h.id}|${fecha}`)}><Icon name="ellipsis" size={16} /></button>
