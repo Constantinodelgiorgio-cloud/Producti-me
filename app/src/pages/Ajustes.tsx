@@ -194,7 +194,7 @@ function Conexion() {
     const e = useSync.getState()
     ui.notify(e.estado === 'error' ? `No se pudo sincronizar: ${e.error}` : 'Dispositivo vinculado: tus datos ya están acá', undefined, e.estado === 'error' ? 'neutral' : 'ok')
   }
-  const estado = !st.syncOn ? 'Apagada' : sync.estado === 'sincronizando' ? 'Sincronizando…' : sync.estado === 'error' ? `Error: ${sync.error}` : sync.ultima ? `Al día · ${new Date(sync.ultima).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Activada'
+  const estado = !st.syncOn ? 'Apagada' : sync.estado === 'sincronizando' ? 'Sincronizando…' : sync.estado === 'sin conexion' ? 'Sin conexión: se sincroniza cuando vuelva' : sync.estado === 'error' ? `Error: ${sync.error}` : sync.ultima ? `Al día · ${new Date(sync.ultima).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Activada'
   return (
     <section className="panel pad" id="sec-correo">
       <h2 className="h2" style={{ marginBottom: 14 }}><Icon name="refresh" size={16} />Conexión con Google</h2>

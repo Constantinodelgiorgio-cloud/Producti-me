@@ -159,6 +159,7 @@ function Shell() {
           <span className="tb-ic"><Icon name={icon} size={15} /></span><span>{name}</span>
         </div>
         <div className="scroll" ref={scroll} onScroll={(e) => { const c = (e.target as HTMLElement).scrollTop > 64; if (c !== compact) setCompact(c) }}>
+          <SinConexion />
           <main className={`page ${route === 'coach' ? 'page-full' : ''}`} key={ui.route + (ui.sub ?? '')}>
             <Suspense fallback={<div style={{ height: 200 }} />}><P /></Suspense>
           </main>
@@ -193,6 +194,18 @@ function Shell() {
       <div className="sr" aria-live="polite">{ui.toast?.text}</div>
     </div>
   )
+}
+
+/** Pastilla discreta cuando no hay internet: todo sigue funcionando y se guarda en el dispositivo. */
+function SinConexion() {
+  const [on, setOn] = useState(() => navigator.onLine)
+  useEffect(() => {
+    const a = () => setOn(true); const b = () => setOn(false)
+    window.addEventListener('online', a); window.addEventListener('offline', b)
+    return () => { window.removeEventListener('online', a); window.removeEventListener('offline', b) }
+  }, [])
+  if (on) return null
+  return <div className="offline-pill" role="status"><Icon name="cloud-off" size={13} />Sin conexión · todo se guarda en el teléfono</div>
 }
 
 function Palette() {

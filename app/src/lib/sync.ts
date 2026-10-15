@@ -80,7 +80,7 @@ const limpiar = (d: Data): Data => {
 }
 
 // ---------- Estado visible ----------
-export type SyncEstado = 'apagado' | 'sincronizando' | 'ok' | 'error'
+export type SyncEstado = 'apagado' | 'sincronizando' | 'ok' | 'error' | 'sin conexion'
 export const useSync = create<{ estado: SyncEstado; ultima?: string; error?: string; dispositivo?: string }>(() => ({ estado: 'apagado' }))
 
 const nombreDispositivo = () => {
@@ -122,6 +122,8 @@ let otraVez = false
 /** Trae lo de la nube, lo combina con lo local y sube el resultado. Seguro de llamar seguido. */
 export const sincronizar = (): Promise<void> => {
   if (!conf()) { useSync.setState({ estado: 'apagado' }); return Promise.resolve() }
+  // Sin internet no se intenta: los cambios quedan en el teléfono y se suben al volver la conexión.
+  if (!navigator.onLine) { useSync.setState({ estado: 'sin conexion', error: undefined }); return Promise.resolve() }
   if (corriendo) { otraVez = true; return corriendo }
   corriendo = (async () => {
     try {
@@ -212,11 +214,13 @@ let timer: number | undefined
 export const iniciarSync = () => {
   const vis = () => { if (document.visibilityState === 'visible') void sincronizar(); else { window.clearTimeout(timer); void sincronizar() } }
   document.addEventListener('visibilitychange', vis)
+  const online = () => void sincronizar()
+  window.addEventListener('online', online)
   const unsub = useStore.subscribe((s, prev) => {
     if (s === prev || !conf()) return
     window.clearTimeout(timer)
     timer = window.setTimeout(() => void sincronizar(), 2500)
   })
   const id = window.setInterval(() => { if (document.visibilityState === 'visible') void sincronizar() }, 60_000)
-  return () => { document.removeEventListener('visibilitychange', vis); unsub(); window.clearInterval(id) }
+  return () => { document.removeEventListener('visibilitychange', vis); window.removeEventListener('online', online); unsub(); window.clearInterval(id) }
 }
