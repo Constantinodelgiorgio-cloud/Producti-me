@@ -950,7 +950,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .capacidad.warn .cap-bar i { background: var(--warn); }
 .capacidad.over .cap-bar i { background: var(--danger); }
 .capacidad.over .cap { color: var(--t2); }
-.cierre-res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cierre-res { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 10px; }
 .cierre-res > div { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 .pend-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--r-2); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; }
 .pend-row small { display: block; font-size: 12px; margin-top: 4px; }
@@ -1116,3 +1116,4 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 .despues b { font-weight: 500; color: var(--t1); font-size: 12px; }
 .despues .ic { color: var(--t3); }
 .despues:hover span:not(.cap) { color: var(--t1); }
+@container app (min-width: 980px) { .dia-grid .dia-cierre { grid-column: 1 / -1; } }

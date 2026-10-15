@@ -3,7 +3,7 @@ import { useStore, type Data } from '../lib/store'
 import { useUI } from '../lib/ui'
 import { addDays, dow, today, uid } from '../lib/date'
 import { bedtimeFor, compliance, hourFmt, nowMin, planDelDia, toMin } from '../lib/logic'
-import { conHora } from '../lib/dia'
+import { conHora, obligatoriasDe, type Obligatoria } from '../lib/dia'
 import type { Tarea } from '../lib/types'
 import { Icon } from './Icon'
 import { CheckBox } from './HabitRow'
@@ -91,7 +91,23 @@ export const CierreSheet = () => {
   const ci = d.checkins[f]
   const [dificil, setDificil] = useState(d.checkins[man]?.prioridad ?? '')
   const [paso, setPaso] = useState('')
-  const [victoria, setVictoria] = useState(ci?.victoria ?? '')
+  // La victoria se precarga con lo último que anotaste como "algo bueno" en Lo que va pasando.
+  const [victoria, setVictoria] = useState(ci?.victoria ?? (d.sucesos ?? []).filter((x) => x.fecha === f && x.tipo === 'bien').at(-1)?.texto ?? '')
+  const obs = obligatoriasDe(d, f).filter((o) => o.item)
+  const obListas = obs.filter((o) => o.estado === 'hecho').length
+  // Las obligatorias de "solo hoy" que quedaron pendientes: se pasan a mañana o se sueltan.
+  const base = new Set((d.profile.agenda[dow(f)] ?? []).map((a) => a.que))
+  const obPend = obs.filter((o) => !o.estado && !base.has(o.clave))
+  const moverOb = (o: Obligatoria, a: 'manana' | 'soltar') => d.set((s) => {
+    const hoy = s.planDia[f] ?? {}
+    const out: Partial<Data> = { planDia: { ...s.planDia, [f]: { ...hoy, hechos: { ...(hoy.hechos ?? {}), [o.clave]: 'no' } } } }
+    if (a === 'manana') {
+      const pm = s.planDia[man] ?? {}
+      const ag = pm.agenda ?? (s.profile.agenda[dow(man)] ?? []).map((x) => ({ ...x }))
+      if (!ag.some((x) => x.que === o.clave)) out.planDia = { ...out.planDia, [man]: { ...pm, agenda: [...ag, { ...o.item! }] } }
+    }
+    return out
+  })
   const mover = (t: Tarea, a: 'manana' | 'algun' | 'soltar') => d.set((s) => ({
     tareas: a === 'soltar' ? s.tareas.filter((x) => x.id !== t.id) : s.tareas.map((x) => (x.id === t.id ? { ...x, fecha: a === 'manana' ? man : undefined, pospuesta: (x.pospuesta ?? 0) + 1 } : x)),
   }))
@@ -115,7 +131,19 @@ export const CierreSheet = () => {
           <div><span className="val-m num">{c === null ? '—' : `${Math.round(c * 100)} %`}</span><small className="cap">hábitos</small></div>
           <div><span className="val-m num">{hechas.length}/{hechas.length + pend.length}</span><small className="cap">tareas</small></div>
           <div><span className="val-m">{ci?.prioridadCumplida === 'si' ? 'Sí' : ci?.prioridad ? 'Pendiente' : '—'}</span><small className="cap">prioridad</small></div>
+          {obs.length > 0 && <div><span className="val-m num">{obListas}/{obs.length}</span><small className="cap">obligatorias</small></div>}
         </div>
+        {obPend.length > 0 && <div className="field"><label>Obligatorias de hoy sin hacer</label>
+          <div className="stack" style={{ gap: 8 }}>{obPend.map((o) => (
+            <div key={o.clave} className="pend-row">
+              <span className="grow">{o.clave}{o.hora && <small className="cap"> · {o.hora}</small>}</span>
+              <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                <button className="chip" onClick={() => moverOb(o, 'manana')}>Pasar a mañana</button>
+                <button className="chip" onClick={() => moverOb(o, 'soltar')}>Soltar</button>
+              </div>
+            </div>
+          ))}</div>
+        </div>}
         {pend.length > 0 && <div className="field"><label>Lo que quedó pendiente</label>
           <div className="stack" style={{ gap: 8 }}>{pend.map((t) => (
             <div key={t.id} className="pend-row">
@@ -128,7 +156,7 @@ export const CierreSheet = () => {
             </div>
           ))}</div>
         </div>}
-        <div className="field"><label htmlFor="ci-dif">La tarea difícil de mañana</label><input id="ci-dif" value={dificil} onChange={(e) => setDificil(e.target.value)} placeholder="Lo importante que más te cuesta: va primero" /></div>
+        <div className="field"><label htmlFor="ci-dif">La tarea difícil de mañana</label><input id="ci-dif" value={dificil} onChange={(e) => setDificil(e.target.value)} placeholder="Lo que más te cuesta: va primero" /></div>
         {dificil.trim() && <div className="field"><label htmlFor="ci-paso">Su primer paso concreto</label><input id="ci-paso" value={paso} onChange={(e) => setPaso(e.target.value)} placeholder="Ej. abrir el apunte de Costos en la página 40" /></div>}
         <div className="field"><label htmlFor="ci-vic">Una victoria de hoy (aunque sea chica)</label><input id="ci-vic" value={victoria} onChange={(e) => setVictoria(e.target.value)} placeholder="Algo que salió bien" /></div>
         <div className="row" style={{ flexWrap: 'nowrap' }}><button className="btn btn-ghost" onClick={ui.closeSheet}>Ahora no</button><button className="btn btn-primary grow" onClick={cerrar}>Cerrar el día</button></div>

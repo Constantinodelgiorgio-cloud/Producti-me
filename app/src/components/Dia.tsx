@@ -41,8 +41,11 @@ export function ElDia() {
   const obs = obligatoriasDe(d, f)
   const listas = obs.filter((o) => o.estado && o.estado !== 'no').length
   const tardes = vencidas(d, f, nowMin())
+  const ui = useUI()
+  const noche = new Date().getHours() >= 19 && !d.checkins[f]?.cerrado
   return (
     <div className="dia-grid">
+      {noche && <button className="ci-btn dia-cierre" onClick={() => ui.openSheet('cierre')}><Icon name="sunset" size={20} /><span><b>Cerrar el día</b><small>30 s · lo pendiente pasa a mañana y anotás la difícil</small></span></button>}
       <section className="panel ob-panel" aria-label="Obligatorias de hoy">
         <div className="ob-head">
           <Ring p={obs.length ? listas / obs.length : 0} size={40} sw={4} />
