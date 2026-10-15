@@ -21,7 +21,6 @@
 //    Después de cambiarla: Implementar → Gestionar implementaciones → lápiz → Versión: Nueva → Implementar.
 // =====================================================================================
 var CLAVE = 'CAMBIAR-por-una-clave-larga-y-secreta';
-var CLAVE_EJEMPLO = 'CAMBIAR-por-una-clave-larga-y-secreta';
 
 // 2) Remitentes y palabras que se buscan. Ajustalo si tu banco usa otra dirección.
 var BUSQUEDA = '(from:mercadopago.com OR from:santander.com.ar OR from:visa.com.ar OR from:prismamediosdepago.com '
@@ -31,7 +30,7 @@ var ARCHIVO = 'producti-me-datos.json';
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (CLAVE === CLAVE_EJEMPLO) return json({ error: 'clave_sin_cambiar' });
+  if (sinCambiar()) return json({ error: 'clave_sin_cambiar' });
   if (p.token !== CLAVE) return json({ error: 'unauthorized' });
   if (p.accion === 'rev') return json(cabecera());
   if (p.accion === 'leer') return json(leer());
@@ -45,7 +44,7 @@ function doGet(e) {
 function doPost(e) {
   var b;
   try { b = JSON.parse(e.postData.contents); } catch (x) { return json({ error: 'bad_request' }); }
-  if (CLAVE === CLAVE_EJEMPLO) return json({ error: 'clave_sin_cambiar' });
+  if (sinCambiar()) return json({ error: 'clave_sin_cambiar' });
   if (b.token !== CLAVE) return json({ error: 'unauthorized' });
   if (b.accion === 'anotar') return json(anotarSalud(b));
   if (b.accion === 'resumen') {
@@ -176,6 +175,9 @@ function ics() {
   return ContentService.createTextOutput(L.join('\r\n')).setMimeType(ContentService.MimeType.ICAL);
 }
 
+// No tocar: detecta si la CLAVE sigue siendo la de ejemplo.
+function sinCambiar() { return !CLAVE || CLAVE.indexOf('CAMBIAR-por') === 0; }
+
 function json(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
@@ -183,7 +185,7 @@ function json(o) {
 // Para probar desde el editor: elegí "probar" en el menú de funciones (arriba), tocá Ejecutar,
 // aceptá los permisos y mirá el registro. No ejecutes doGet ni doPost desde el editor: los llama la app.
 function probar() {
-  Logger.log(CLAVE === CLAVE_EJEMPLO ? 'FALTA: cambiá la CLAVE (línea de arriba de todo).' : 'Clave cambiada: OK (' + CLAVE.length + ' caracteres).');
+  Logger.log(sinCambiar() ? 'FALTA: cambiá la CLAVE (línea de arriba de todo).' : 'Clave cambiada: OK (' + CLAVE.length + ' caracteres).');
   try { Logger.log('Drive: OK · datos guardados (rev ' + cabecera().rev + ') en ' + archivo().getName()); } catch (x) { Logger.log('Drive: ERROR · ' + x); }
   try { Logger.log('Gmail: OK · ' + correos(0).length + ' correos de pagos en 30 días'); } catch (x) { Logger.log('Gmail: ERROR · ' + x); }
   Logger.log('Si todo dice OK: Implementar → Nueva implementación (o Gestionar → Versión nueva) → Aplicación web, ejecutar como "Yo", acceso "Cualquier usuario".');
