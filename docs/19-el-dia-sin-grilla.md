@@ -70,3 +70,36 @@ El resumen que la app publica para el widget ya no trae los bloques que marcaste
 El resumen también incluye cuántas obligatorias hiciste. El widget grande muestra "OBLIGATORIAS · 1/4" en lugar de "AGENDA". Cuando ya no quedan bloques con hora, el widget mediano muestra cuántas obligatorias sin hora quedan pendientes.
 
 Para ver estos cambios hay que volver a copiar `integraciones/widget-scriptable.js` en Scriptable. El widget viejo sigue funcionando: ya deja de mostrar los bloques hechos, pero no muestra el conteo de obligatorias.
+
+## Mejoras chicas posteriores
+
+- **Ahora**
+  - De madrugada, antes de la hora de despertar, muestra "Es hora de dormir" y lo primero del día.
+  - Durante el día muestra "Después: 14:30 Gimnasio · 21:00 Rugby · +1 sin hora". Al tocarlo se abre El día.
+  - Los títulos se muestran sin "(hasta 11:40)", porque la hora de fin ya aparece aparte.
+- **Bloques con hábitos adentro**: al marcar el bloque de gimnasio o rugby, el hábito de entrenar que va adentro se marca solo. Deshacer revierte las dos cosas.
+- **Avisos y "ahora"**
+  - El aviso de obligatoria pendiente aparece 15 minutos después de que termina el bloque, no a la media hora de empezar.
+  - La marca "ahora" usa la duración real de cada bloque.
+- **Cierre del día**
+  - Muestra el conteo de obligatorias.
+  - Las obligatorias de "solo hoy" que no se hicieron se pueden pasar a mañana o soltar.
+  - La victoria viene completada con lo último anotado como "Algo bueno".
+  - Desde las 19 h aparece también en El día, junto a una vista de lo que hay mañana.
+- **Anotar rápido**
+  - "Anotar lo que pasó…" está arriba de todo en Registrar (+).
+  - En la paleta de comandos (⌘K): "Ver el día", "Anotar lo que pasó", "Agregar una obligatoria de hoy" y "Sincronizar ahora". Si escribís una frase que no es un comando, se anota en el día.
+- **Coach**
+  - Herramienta `anotar_suceso`: anota imprevistos, cambios y cosas buenas en el día.
+  - Puede agregar obligatorias sin hora.
+  - La revisión semanal le pasa lo que fue pasando.
+- **Revisión semanal**: sección "Lo que fue pasando", con obligatorias cumplidas, imprevistos y cosas buenas. Un botón pasa las cosas buenas a "¿Qué salió bien?".
+- **Hábitos**
+  - Cada hábito muestra a qué hora se marcó.
+  - El orden sigue el momento del día, con los obligatorios primero.
+  - Un aviso, que se puede cerrar, explica cómo marcar uno como obligatorio.
+- **Ajustes → Obligatorias de cada semana**: para editar lo fijo de cada día (hora, texto, agregar, sacar).
+- **Sin conexión**
+  - Aparece una pastilla discreta.
+  - La sincronización no se intenta sin internet y corre sola cuando vuelve la conexión.
+- **Teclado en el celular**: las hojas ya no abren el teclado solas en pantallas táctiles.
