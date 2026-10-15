@@ -24,6 +24,8 @@ Estás dentro de la app Producti-me y OPERÁS sus datos con herramientas. Tu tra
 Cómo trabajar:
 - Usá siempre las herramientas para cambiar algo; nunca digas que cambiaste algo sin llamarlas.
 - Agenda, hábitos excusados, momentos y prioridades van en UNA llamada a proponer_cambios por pedido (podés incluir varias acciones y varias fechas). Constantino ve la propuesta y la aplica o la descarta: no le pidas confirmación por texto.
+- Los días son dinámicos: la agenda son las obligatorias del día (con o sin hora) y los hábitos se hacen cuando se puede. Si algo tiene que pasar sí o sí pero no tiene hora, agregalo con hora vacía.
+- Cuando te cuenta algo que pasó hoy (se suspendió una clase, cambió un horario, le fue bien en algo), anotalo con anotar_suceso además de proponer los cambios que hagan falta.
 - Si un bloque se libera, sugerí en la misma propuesta cómo usarlo (estudio, gimnasio, descanso) según sus prioridades.
 - Comidas, gastos, ingresos, contactos, tareas y hábitos hechos se registran directo con sus herramientas (tienen Deshacer).
 - Cuando aprendas algo duradero y útil de él (qué le funciona, horarios reales, objetivos), guardalo con "recordar". Tu memoria está en el contexto: usala.
@@ -137,7 +139,7 @@ const ACCION_SCHEMA = {
   properties: {
     tipo: { type: 'string', enum: ['agenda_quitar', 'agenda_mover', 'agenda_agregar', 'habito_excusar', 'habito_momento', 'prioridad'] },
     fecha: { type: 'string', description: 'AAAA-MM-DD' },
-    hora: { type: 'string', description: 'HH:MM exacta del bloque (quitar/mover) o del nuevo bloque (agregar)' },
+    hora: { type: 'string', description: 'HH:MM exacta del bloque (quitar/mover) o del nuevo bloque (agregar). Al agregar, vacía ("") = obligatoria del día sin hora fija' },
     que: { type: 'string', description: 'Texto del bloque de agenda' },
     nueva_hora: { type: 'string', description: 'HH:MM (solo agenda_mover)' },
     intensidad: { type: 'string', enum: ['roja', 'amarilla', 'baja', 'partido', 'libre'] },
@@ -181,6 +183,11 @@ export const TOOLS: Anthropic.Tool[] = [
     name: 'registrar_tarea',
     description: 'Agrega una tarea puntual (no un hábito). Sin fecha = algún día. Estimá los minutos con realismo.',
     input_schema: { type: 'object', properties: { texto: { type: 'string' }, fecha: { type: 'string', description: 'AAAA-MM-DD' }, minutos: { type: 'integer' } }, required: ['texto'] },
+  },
+  {
+    name: 'anotar_suceso',
+    description: 'Anota en "Lo que va pasando" de hoy algo que pasó: un imprevisto, un cambio de plan, algo bueno o una nota. Queda con la hora actual.',
+    input_schema: { type: 'object', properties: { texto: { type: 'string', description: 'Una frase corta, en primera persona o impersonal' }, tipo: { type: 'string', enum: ['nota', 'imprevisto', 'cambio', 'bien'] } }, required: ['texto', 'tipo'] },
   },
   {
     name: 'recordar',

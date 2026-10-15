@@ -47,7 +47,7 @@ export const validarAccion = (d: Data, a: Accion): string | null => {
       return null
     }
     case 'agenda_agregar':
-      if (!HORA.test(a.hora ?? '')) return `Hora inválida: ${a.hora}`
+      if (a.hora && !HORA.test(a.hora)) return `Hora inválida: ${a.hora}`
       if (!a.que?.trim()) return 'Falta qué agregar.'
       return null
     case 'habito_excusar': {
@@ -85,7 +85,7 @@ const applyOne = (plan: Record<string, PlanDia>, prio: Record<string, string>, d
       break
     }
     case 'agenda_agregar':
-      p.agenda = [...base(), { hora: a.hora, que: a.que.trim(), ...(a.intensidad ? { intensidad: a.intensidad } : {}) }].sort((x, y) => x.hora.localeCompare(y.hora))
+      p.agenda = [...base(), { hora: a.hora ?? '', que: a.que.trim(), ...(a.intensidad ? { intensidad: a.intensidad } : {}) }].sort((x, y) => (x.hora || '99').localeCompare(y.hora || '99'))
       break
     case 'habito_excusar':
       p.excusas = { ...(p.excusas ?? {}), [a.habito_id]: { motivo: a.motivo.trim(), categoria: a.categoria, ...(a.alternativa?.trim() ? { alternativa: a.alternativa.trim() } : {}) } }
@@ -134,7 +134,7 @@ export const describir = (d: Data, a: Accion): { signo: '+' | '−' | '~'; texto
   switch (a.tipo) {
     case 'agenda_quitar': return { signo: '−', texto: `${a.hora} ${a.que}` }
     case 'agenda_mover': return { signo: '~', texto: `${a.que}: ${a.hora} → ${a.nueva_hora}` }
-    case 'agenda_agregar': return { signo: '+', texto: `${a.hora} ${a.que}${a.intensidad ? ` · ${a.intensidad}` : ''}` }
+    case 'agenda_agregar': return { signo: '+', texto: `${a.hora || 'sin hora'} ${a.que}${a.intensidad ? ` · ${a.intensidad}` : ''}` }
     case 'habito_excusar': return { signo: '~', texto: `Excusar "${hab(a.habito_id)}" · ${a.categoria}: ${a.motivo}${a.alternativa ? ` · alternativa: ${a.alternativa}` : ''}` }
     case 'habito_momento': return { signo: '~', texto: `"${hab(a.habito_id)}" pasa a la ${{ manana: 'mañana', dia: 'franja flexible', tarde: 'tarde', noche: 'noche' }[a.momento]}` }
     case 'prioridad': return { signo: '+', texto: `Prioridad: ${a.texto}` }

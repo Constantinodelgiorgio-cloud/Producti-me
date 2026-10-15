@@ -113,6 +113,15 @@ export default function Coach() {
         undos.set(key, () => useStore.getState().set((s) => ({ tareas: s.tareas.filter((x) => x.id !== id) })))
         return { ok: true, undoKey: key, texto: `Tarea agregada${fecha ? ` para el ${fecha}` : ' (algún día)'}: ${texto}.` }
       }
+      if (name === 'anotar_suceso') {
+        const texto = String(input.texto ?? '').trim().slice(0, 240)
+        if (!texto) return { ok: false, texto: 'Vacío.' }
+        const tipo = (['nota', 'imprevisto', 'cambio', 'bien'] as const).find((x) => x === input.tipo) ?? 'nota'
+        const id = uid()
+        st.set((s) => ({ sucesos: [...(s.sucesos ?? []), { id, fecha: today(), hora: new Date().toTimeString().slice(0, 5), texto, tipo }] }))
+        undos.set(key, () => useStore.getState().set((s) => ({ sucesos: s.sucesos.filter((x) => x.id !== id) })))
+        return { ok: true, undoKey: key, texto: `Anotado en el día: ${texto}` }
+      }
       if (name === 'recordar') {
         const texto = String(input.texto ?? '').trim().slice(0, 240)
         if (!texto) return { ok: false, texto: 'Vacío.' }
