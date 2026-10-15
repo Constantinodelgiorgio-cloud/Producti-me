@@ -16,7 +16,9 @@ export const Sheet = ({ label, children }: { label: string; children: ReactNode 
   const drag = useRef<{ y0: number; dy: number } | null>(null)
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
-    const first = ref.current?.querySelector<HTMLElement>('button, input, select, textarea')
+    // En pantallas táctiles no se enfoca un campo: abriría el teclado sin que lo pidas. Se enfoca la hoja (lectores de pantalla).
+    const tactil = matchMedia('(pointer: coarse)').matches
+    const first = tactil ? ref.current : ref.current?.querySelector<HTMLElement>('button, input, select, textarea')
     first?.focus({ preventScroll: true })
     return () => prev?.focus?.({ preventScroll: true })
   }, [])
@@ -31,7 +33,7 @@ export const Sheet = ({ label, children }: { label: string; children: ReactNode 
   return (
     <>
       <div className="scrim" onClick={close} />
-      <section className="sheet" ref={ref} role="dialog" aria-modal="true" aria-label={label} onKeyDown={onKey}>
+      <section className="sheet" ref={ref} role="dialog" aria-modal="true" aria-label={label} onKeyDown={onKey} tabIndex={-1}>
         <div className="grab"
           onPointerDown={(e) => { drag.current = { y0: e.clientY, dy: 0 }; ref.current?.classList.add('dragging'); try { (e.target as HTMLElement).setPointerCapture(e.pointerId) } catch { /* sin captura */ } }}
           onPointerMove={(e) => { if (!drag.current || !ref.current) return; drag.current.dy = Math.max(0, e.clientY - drag.current.y0); ref.current.style.transform = `translateY(${drag.current.dy}px)` }}

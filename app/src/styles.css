@@ -1123,3 +1123,4 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 .ob-base input[type=time] { width: 118px !important; flex: none; min-height: 42px; padding: 4px 8px !important; font-size: 15px; }
 .ob-base input:not([type=time]) { flex: 1; min-width: 0; }
 .ob-base .icon-btn { flex: none; }
+.sheet:focus { outline: none; }
