@@ -10,12 +10,15 @@ const tip = {
 }
 const grid = <CartesianGrid stroke="#1E2127" vertical={false} />
 type Y = { key: string; color?: string; name?: string }
+/** Sin ningún valor distinto de 0: en vez de ejes vacíos, un aviso del mismo alto. */
+const vacio = (data: object[], ys: Y[]) => !data.some((r) => ys.some((y) => { const v = (r as Record<string, unknown>)[y.key]; return typeof v === 'number' && v !== 0 }))
+const Vacio = ({ height }: { height: number }) => <div className="chart-empty" style={{ height }}><span>Todavía sin datos para graficar</span></div>
 
-export const LineC = ({ data, x, ys, target, height = 200 }: { data: object[]; x: string; ys: Y[]; target?: number; height?: number }) => (
+export const LineC = ({ data, x, ys, target, height = 200 }: { data: object[]; x: string; ys: Y[]; target?: number; height?: number }) => vacio(data, ys) ? <Vacio height={Math.min(height, 120)} /> : (
   <ResponsiveContainer width="100%" height={height}>
     <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
       {grid}
-      <XAxis dataKey={x} tick={axis} tickLine={false} axisLine={{ stroke: '#2A2E36' }} />
+      <XAxis dataKey={x} tick={axis} tickLine={false} axisLine={{ stroke: '#2A2E36' }} minTickGap={14} interval="preserveStartEnd" />
       <YAxis tick={axis} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
       <Tooltip {...tip} cursor={{ stroke: '#3A3F49' }} />
       {target !== undefined && <ReferenceLine y={target} stroke="#5FBF92" strokeDasharray="4 4" />}
@@ -24,11 +27,11 @@ export const LineC = ({ data, x, ys, target, height = 200 }: { data: object[]; x
   </ResponsiveContainer>
 )
 
-export const BarC = ({ data, x, ys, height = 200, stacked, target }: { data: object[]; x: string; ys: Y[]; height?: number; stacked?: boolean; target?: number }) => (
+export const BarC = ({ data, x, ys, height = 200, stacked, target }: { data: object[]; x: string; ys: Y[]; height?: number; stacked?: boolean; target?: number }) => vacio(data, ys) ? <Vacio height={Math.min(height, 120)} /> : (
   <ResponsiveContainer width="100%" height={height}>
     <BarChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
       {grid}
-      <XAxis dataKey={x} tick={axis} tickLine={false} axisLine={{ stroke: '#2A2E36' }} />
+      <XAxis dataKey={x} tick={axis} tickLine={false} axisLine={{ stroke: '#2A2E36' }} minTickGap={14} interval="preserveStartEnd" />
       <YAxis tick={axis} tickLine={false} axisLine={false} />
       <Tooltip {...tip} cursor={{ fill: 'rgba(255,255,255,.03)' }} />
       {target !== undefined && <ReferenceLine y={target} stroke="#5FBF92" strokeDasharray="4 4" />}

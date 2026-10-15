@@ -71,8 +71,8 @@ function Cartera() {
 
         <Comprobante />
 
-        <Card title="Gastos por categoría" icon="layout-grid" right={<span className="cap">tocá el monto para fijar presupuesto</span>}>
-          {cats.length === 0 ? <p className="cap">Sin gastos este mes.</p> : cats.map((x) => <CatRow key={x.c} {...x} />)}
+        <Card title="Gastos por categoría" icon="layout-grid">
+          {cats.length === 0 ? <p className="cap">Sin gastos este mes.</p> : <>{cats.map((x) => <CatRow key={x.c} {...x} />)}<p className="cap" style={{ marginTop: 10 }}>Tocá el monto de una categoría para fijarle un presupuesto.</p></>}
         </Card>
       </div>
 
@@ -404,7 +404,7 @@ function CuotasCard() {
   const activas = (d.cuotas ?? []).filter((x) => sumarMes(x.primerMes, x.cantidad) > mes)
   return (
     <section className="panel pad">
-      <div className="sec" style={{ margin: '0 0 12px' }}><h2 className="h2"><Icon name="credit-card" size={16} />Cuotas en la tarjeta</h2>
+      <div className="sec sec-wrap" style={{ margin: '0 0 12px' }}><h2 className="h2" style={{ whiteSpace: 'nowrap' }}><Icon name="credit-card" size={16} />Cuotas en la tarjeta</h2>
         <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost btn-sm" onClick={() => setAbierto(abierto === 'calc' ? null : 'calc')}>¿Conviene?</button><button className="btn btn-ghost btn-sm" onClick={() => setAbierto(abierto === 'nueva' ? null : 'nueva')}><Icon name="plus" size={14} />Cargar</button></div></div>
       {abierto === 'nueva' && <div className="stack" style={{ gap: 10, marginBottom: 14 }}>
         <div className="form-grid">

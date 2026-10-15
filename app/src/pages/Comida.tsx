@@ -97,7 +97,7 @@ export default function Comida() {
       </div>
       <div className="two-col">
         <div className="stack">
-          <div className="search big"><Icon name="search" size={18} /><input aria-label="Buscar un alimento" placeholder="Buscá: palta, bife, milanesa, café con leche…" value={q} onChange={(e) => { setQ(e.target.value); setOpen(null) }} autoComplete="off" />{q && <button className="icon-btn sm clear" aria-label="Borrar búsqueda" onClick={() => setQ('')}><Icon name="x" size={15} /></button>}</div>
+          <div className="search big"><Icon name="search" size={18} /><input aria-label="Buscar un alimento" placeholder="Buscá: palta, bife, milanesa…" value={q} onChange={(e) => { setQ(e.target.value); setOpen(null) }} autoComplete="off" />{q && <button className="icon-btn sm clear" aria-label="Borrar búsqueda" onClick={() => setQ('')}><Icon name="x" size={15} /></button>}</div>
           {!q.trim() && <Seg label="Atajos" value={tab} onChange={(v) => { setTab(v); setCat(null) }} options={[['recientes', 'Recientes'], ['favoritos', 'Favoritos'], ['guardadas', 'Guardadas'], ['categorias', 'Categorías']]} />}
 
           {!q.trim() && tab === 'recientes' && (recientes.length ? <div className="food-list">{recientes.map((r) => (

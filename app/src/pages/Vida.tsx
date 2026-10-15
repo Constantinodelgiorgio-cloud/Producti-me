@@ -432,7 +432,7 @@ function Gratitud() {
       {hecha ? <p className="body-2">Esta semana le agradeciste a <b>{hecha.con}</b>{hecha.nota ? `: “${hecha.nota}”` : ''}. La próxima, el lunes.</p> : <>
         <p className="cap" style={{ margin: '-6px 0 12px' }}>Una vez por semana alcanza: hacerlo seguido le quita efecto. Mejor si se lo decís.</p>
         <div className="stack" style={{ gap: 10 }}>
-          <input aria-label="A quién" placeholder="¿A quién le agradecés algo de esta semana?" value={con} onChange={(e) => setCon(e.target.value)} list="personas" />
+          <input aria-label="A quién" placeholder="¿A quién le agradecés algo?" value={con} onChange={(e) => setCon(e.target.value)} list="personas" />
           <input aria-label="Por qué" placeholder="¿Por qué? (en una frase)" value={txt} onChange={(e) => setTxt(e.target.value)} />
           <div className="row">
             <button className="btn btn-primary" disabled={!con.trim() || !txt.trim()} onClick={guardar}>Guardar</button>

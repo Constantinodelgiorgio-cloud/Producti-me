@@ -372,7 +372,7 @@ input[type=date], input[type=time] { -webkit-appearance: none; appearance: none;
 /* ---------- registro de comida ---------- */
 .search { position: relative; }
 .search .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--t3); pointer-events: none; }
-.search input { padding-left: 40px; }
+.search input { padding-left: 40px !important; }
 .foods { display: flex; flex-wrap: wrap; gap: 8px; }
 .food { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; border-radius: 11px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; transition: all var(--d-1); text-align: left; }
 .food small { font-family: var(--mono); font-size: 11px; color: var(--t3); white-space: nowrap; }
@@ -593,7 +593,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .composer textarea { flex: 1; min-height: 40px; max-height: 140px; padding: 9px 0; border: 0 !important; background: transparent; resize: none; box-shadow: none !important; line-height: 1.4; }
 
 /* ---------- Comida ---------- */
-.search.big input { min-height: 52px; font-size: 16px; border-radius: 16px; padding-left: 44px; padding-right: 44px; }
+.search.big input { min-height: 52px; font-size: 16px; border-radius: 16px; padding-left: 44px !important; padding-right: 44px !important; }
 .search.big .ic { left: 16px; }
 .search .clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 .food-list { display: flex; flex-direction: column; gap: 6px; }
@@ -742,7 +742,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .slot.cur .blk.fijo { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 55%, transparent), 0 0 24px -12px var(--tone); }
 .any-time .win-head { margin-top: 0; margin-bottom: 12px; }
 .link-row.as-field { color: var(--t2); }
-.link-row.as-field input[type=time] { width: 116px !important; flex: none; min-height: 36px; padding: 4px 10px; }
+.link-row.as-field input[type=time] { width: 124px !important; flex: none; min-height: 36px; padding: 4px 10px; }
 
 /* ---------- Conexión / sincronización ---------- */
 .link-box { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--r-2); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); }
@@ -1049,7 +1049,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .comida-sel { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
 .comida-sel .chip { flex: none; }
 .comida-sel .chip small { opacity: .7; margin-left: 4px; font-family: var(--mono); font-size: 11px; }
-.hora-in { width: 112px !important; flex: none; min-height: 38px !important; padding: 4px 10px !important; }
+.hora-in { width: 124px !important; flex: none; min-height: 38px !important; padding: 4px 10px !important; }
 
 /* ---------- El día: obligatorias, cuando puedas y lo que va pasando ---------- */
 .dia-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
@@ -1083,7 +1083,7 @@ details summary { cursor: pointer; color: var(--t2); font-size: 13px; padding: 6
 .ob-hab { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .ob-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0 12px 62px; }
 .ob-time { display: flex; align-items: center; gap: 8px; }
-.ob-time input[type=time] { width: 116px !important; flex: none; min-height: 38px; padding: 4px 10px; }
+.ob-time input[type=time] { width: 124px !important; flex: none; min-height: 38px; padding: 4px 10px; }
 .ob-add-btn { margin: 4px -6px 4px; color: var(--accent-2); }
 .ob-add { display: flex; flex-direction: column; gap: 12px; padding: 12px 0 10px; border-top: 1px solid var(--line); margin-top: 4px; }
 .ob-add-row { justify-content: space-between; gap: 10px; }
@@ -1109,3 +1109,6 @@ button.fe-t:hover .tt { color: var(--accent-2); }
 .reg-pasa { display: flex; gap: 8px; align-items: center; padding: 4px 4px 4px 14px; margin-bottom: 16px; border-radius: 16px; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-2); }
 .reg-pasa .ic { color: var(--t3); flex: none; }
 .reg-pasa input { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 10px 0; min-height: 44px; min-width: 0; flex: 1; }
+
+.chart-empty { display: grid; place-items: center; border-radius: var(--r-2); border: 1px dashed var(--line-2); color: var(--t3); font-size: 12.5px; margin: 4px 0; }
+.sec-wrap { flex-wrap: wrap; row-gap: 8px; }
